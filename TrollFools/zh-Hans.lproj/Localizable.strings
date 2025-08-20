@@ -215,16 +215,16 @@
 "The content of text file “%@” is empty." = "文本文件 “%@” 的内容为空。";
 
 /* No comment provided by engineer. */
-"TrollFools" = "巨魔注入器";
+"TrollFools" = "DjInjection";
 
 /* No comment provided by engineer. */
-"TrollRecorder" = "巨魔录音机";
+"TrollRecorder" = "DjInjection录音机";
 
 /* No comment provided by engineer. */
-"TrollStore" = "巨魔应用";
+"TrollStore" = "DjInjection应用";
 
 /* No comment provided by engineer. */
-"TrollStore Applications" = "巨魔应用";
+"TrollStore Applications" = "DjInjection应用";
 
 /* No comment provided by engineer. */
 "Unable to locate the data archive in the Debian package." = "无法在 Debian 软件包中找到数据归档。";
