@@ -152,6 +152,17 @@ struct OptionView: View {
                 }
             }
         }
+        .alert("File Info", isPresented: $isFileInfoPresented) {     // 新增弹窗
+            Button(NSLocalizedString("Continue", comment: "")) {
+                if let urls = pendingUrls {
+                    importerResult = .success(urls)
+                    isImporterSelected = true
+                    pendingUrls = nil
+                }
+            }
+        } message: {
+            Text(fileInfoMessage)
+        }
     }
 
     static func warningMessage(_ urls: [URL]) -> String {
@@ -181,16 +192,44 @@ struct OptionView: View {
             }
     
             let (byteStream, response) = try await URLSession.shared.bytes(from: downloadURL)
+            var lastModifiedDate: Date? = nil               // 新增：用于保存 Last-Modified 时间
+            if let httpResp = response as? HTTPURLResponse, // 解析 Last-Modified
+               let lmStr = httpResp.value(forHTTPHeaderField: "Last-Modified") {
+                let rfcFmt = DateFormatter()
+                rfcFmt.locale = Locale(identifier: "en_US_POSIX")
+                rfcFmt.dateFormat = "E, dd MMM yyyy HH:mm:ss z"
+                rfcFmt.timeZone = TimeZone(abbreviation: "GMT")
+                lastModifiedDate = rfcFmt.date(from: lmStr)
+            }
             let expected = response.expectedContentLength
             var received: Int64 = 0
             var data = Data()
+            // downloadAndInject() 内部（替换原 for 循环部分）
+            var buffer = [UInt8]()
+            buffer.reserveCapacity(8 * 1024) // 8 KB
+            var lastReported: Double = 0
+            let reportInterval: Double = 0.05 // 每提升 5% 刷新一次 UI
             for try await byte in byteStream {
-                data.append(contentsOf: [byte])   // ← 将 UInt8 包装成数组后追加
+                buffer.append(byte)
                 received += 1
+
+                // 若到达 8 KB 或已结束，写入 data
+                if buffer.count >= 8 * 1024 {
+                    data.append(contentsOf: buffer)
+                    buffer.removeAll(keepingCapacity: true)
+                }
+
                 if expected > 0 {
                     let progress = Double(received) / Double(expected)
-                    await MainActor.run { downloadProgress = progress }
+                    if progress - lastReported >= reportInterval || progress == 1 {
+                        lastReported = progress
+                        await MainActor.run { downloadProgress = progress }
+                    }
                 }
+            }
+            // 处理剩余缓冲区
+            if !buffer.isEmpty {
+                data.append(contentsOf: buffer)
             }
             try data.write(to: fileURL, options: .atomic)
             urls = [fileURL]
@@ -198,16 +237,39 @@ struct OptionView: View {
             await MainActor.run {
                 isDownloading = false
             }
-        }
+    
+            // 在切换到主线程前，先使用不可变常量保存结果，避免捕获可变变量触发
+            let selectedUrls = urls // 保留原逻辑
+    
+            // === 新实现：始终构造弹窗信息 ===
+            let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path) // 新增：获取文件属性
+            var dateStr: String
+            if let lm = lastModifiedDate {                // 使用服务器 Last-Modified
+                let fmt = DateFormatter()
+                fmt.dateStyle = .medium
+                fmt.timeStyle = .medium
+                fmt.timeZone = TimeZone(identifier: "Asia/Shanghai") // 转北京时间
+                dateStr = fmt.string(from: lm)
+            } else if let creation = attrs?[.creationDate] as? Date { // 回退到本地创建时间
+                let fmt = DateFormatter()
+                fmt.dateStyle = .medium
+                fmt.timeStyle = .medium
+                fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
+                dateStr = fmt.string(from: creation)
+            } else {
+                dateStr = NSLocalizedString("Time unavailable", comment: "")
+            }
 
-        // 在切换到主线程前，先使用不可变常量保存结果，避免捕获可变变量触发
-        let selectedUrls = urls
-        await MainActor.run {
-            importerResult = .success(selectedUrls)
-            isImporterSelected = true
-        }
+            await MainActor.run {
+                fileInfoMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
+                pendingUrls = selectedUrls
+                isFileInfoPresented = true           // 无论是否有日期，都先弹窗
+            }
     }
     @State private var isDownloading = false
     @State private var downloadProgress: Double = 0.0 // 0~1
     @State private var downloadTitle: String = NSLocalizedString("Downloading…", comment: "")
+    @State private var isFileInfoPresented = false       // 新增：控制弹窗
+    @State private var fileInfoMessage: String = ""      // 新增：弹窗内容
+    @State private var pendingUrls: [URL]? = nil         // 新增：暂存 URL 列表
 }
