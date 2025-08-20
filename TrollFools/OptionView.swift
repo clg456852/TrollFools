@@ -96,7 +96,34 @@ struct OptionView: View {
 
                 Spacer()
             }
-
+            // 新增下载按钮
+            Button {
+                Task {
+                    do {
+                        let fileManager = FileManager.default
+                        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
+                        }
+                        let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+                        let downloadURL = URL(string: "https://dajiang-injection.oss-cn-hangzhou.aliyuncs.com/testa.dylib")!
+                        
+                        _ = try await downloadFile(from: downloadURL, to: fileURL)
+                        
+                        // 下载完成后的提示
+                        await MainActor.run {
+                            // 可以在这里添加下载成功的提示
+                        }
+                    } catch {
+                        await MainActor.run {
+                            importerResult = .failure(error)
+                            isImporterSelected = true
+                        }
+                    }
+                }
+            } label: {
+                Label(NSLocalizedString("Download File", comment: ""), systemImage: "arrow.down.circle")
+            }
+            .disabled(isDownloading) // 下载时禁用按钮
             Button {
                 isSettingsPresented = true
             } label: {
@@ -172,89 +199,122 @@ struct OptionView: View {
         return String(format: NSLocalizedString("You’ve selected at least one Debian Package “%@”. We’re here to remind you that it will not work as it was in a jailbroken environment. Please make sure you know what you’re doing.", comment: ""), firstDylibName)
     }
 
+    // 新增：专门处理文件下载的函数
+    private func downloadFile(from url: URL, to fileURL: URL) async throws -> Date? {
+        await MainActor.run {
+            isDownloading = true
+            downloadProgress = 0
+            downloadTitle = NSLocalizedString("Downloading…", comment: "")
+        }
+        
+        let (byteStream, response) = try await URLSession.shared.bytes(from: url)
+        
+        // 解析 Last-Modified
+        var lastModifiedDate: Date? = nil
+        if let httpResp = response as? HTTPURLResponse,
+           let lmStr = httpResp.value(forHTTPHeaderField: "Last-Modified") {
+            let rfcFmt = DateFormatter()
+            rfcFmt.locale = Locale(identifier: "en_US_POSIX")
+            rfcFmt.dateFormat = "E, dd MMM yyyy HH:mm:ss z"
+            rfcFmt.timeZone = TimeZone(abbreviation: "GMT")
+            lastModifiedDate = rfcFmt.date(from: lmStr)
+        }
+        
+        let expected = response.expectedContentLength
+        var received: Int64 = 0
+        var data = Data()
+        var buffer = [UInt8]()
+        buffer.reserveCapacity(8 * 1024) // 8 KB
+        var lastReported: Double = 0
+        let reportInterval: Double = 0.05 // 每提升 5% 刷新一次 UI
+        
+        for try await byte in byteStream {
+            buffer.append(byte)
+            received += 1
+            
+            // 若到达 8 KB 或已结束，写入 data
+            if buffer.count >= 8 * 1024 {
+                data.append(contentsOf: buffer)
+                buffer.removeAll(keepingCapacity: true)
+            }
+            
+            if expected > 0 {
+                let progress = Double(received) / Double(expected)
+                if progress - lastReported >= reportInterval || progress == 1 {
+                    lastReported = progress
+                    await MainActor.run { downloadProgress = progress }
+                }
+            }
+        }
+        
+        // 处理剩余缓冲区
+        if !buffer.isEmpty {
+            data.append(contentsOf: buffer)
+        }
+        
+        try data.write(to: fileURL, options: .atomic)
+        
+        // 如果有 lastModifiedDate，将其设置为文件的创建时间
+        if let lastModifiedDate = lastModifiedDate {
+            // 转换为北京时间
+            let beijingTimeZone = TimeZone(identifier: "Asia/Shanghai")!
+            let calendar = Calendar.current
+            var dateComponents = calendar.dateComponents(in: beijingTimeZone, from: lastModifiedDate)
+            
+            if let beijingDate = calendar.date(from: dateComponents) {
+                // 设置文件的创建时间和修改时间
+                let attributes: [FileAttributeKey: Any] = [
+                .creationDate: beijingDate,
+                .modificationDate: beijingDate
+                ]
+                
+                do {
+                    try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
+                } catch {
+                    print("Failed to set file attributes: \(error)")
+                }
+            }
+        }
+        await MainActor.run {
+            isDownloading = false
+        }
+        
+        return lastModifiedDate
+    }
+    
+    // 简化后的主函数：只处理本地文件获取和注入
     private func downloadAndInject() async throws {
         let fileManager = FileManager.default
         guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
         }
         let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
-    
-        var urls: [URL] = []
-        var lastModifiedDate: Date? = nil  // 添加变量声明
         
+        var urls: [URL] = []
+        var lastModifiedDate: Date? = nil
+        
+        // 检查本地文件是否存在
         if fileManager.fileExists(atPath: fileURL.path) {
             urls = [fileURL]
         } else {
+            // 如果本地文件不存在，则下载
             let downloadURL = URL(string: "https://dajiang-injection.oss-cn-hangzhou.aliyuncs.com/testa.dylib")!
-    
-            await MainActor.run {
-                isDownloading = true
-                downloadProgress = 0
-                downloadTitle = NSLocalizedString("Downloading…", comment: "")
-            }
-    
-            let (byteStream, response) = try await URLSession.shared.bytes(from: downloadURL)
-            if let httpResp = response as? HTTPURLResponse,                    // 解析 Last-Modified
-               let lmStr = httpResp.value(forHTTPHeaderField: "Last-Modified") {
-                let rfcFmt = DateFormatter()
-                rfcFmt.locale = Locale(identifier: "en_US_POSIX")
-                rfcFmt.dateFormat = "E, dd MMM yyyy HH:mm:ss z"
-                rfcFmt.timeZone = TimeZone(abbreviation: "GMT")
-                lastModifiedDate = rfcFmt.date(from: lmStr)
-            }
-            let expected = response.expectedContentLength
-            var received: Int64 = 0
-            var data = Data()
-            // downloadAndInject() 内部（替换原 for 循环部分）
-            var buffer = [UInt8]()
-            buffer.reserveCapacity(8 * 1024) // 8 KB
-            var lastReported: Double = 0
-            let reportInterval: Double = 0.05 // 每提升 5% 刷新一次 UI
-            for try await byte in byteStream {
-                buffer.append(byte)
-                received += 1
-
-                // 若到达 8 KB 或已结束，写入 data
-                if buffer.count >= 8 * 1024 {
-                    data.append(contentsOf: buffer)
-                    buffer.removeAll(keepingCapacity: true)
-                }
-
-                if expected > 0 {
-                    let progress = Double(received) / Double(expected)
-                    if progress - lastReported >= reportInterval || progress == 1 {
-                        lastReported = progress
-                        await MainActor.run { downloadProgress = progress }
-                    }
-                }
-            }
-            // 处理剩余缓冲区
-            if !buffer.isEmpty {
-                data.append(contentsOf: buffer)
-            }
-            try data.write(to: fileURL, options: .atomic)
+            lastModifiedDate = try await downloadFile(from: downloadURL, to: fileURL)
             urls = [fileURL]
-    
-            await MainActor.run {
-                isDownloading = false
-            }
         }
-
-        // 在切换到主线程前，先使用不可变常量保存结果，避免捕获可变变量触发
-        let selectedUrls = urls
-    
+        
         // 获取文件属性
         let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path)
-    
-        // === 新实现：始终构造弹窗信息 ===
+        
+        // 构造弹窗信息
         var dateStr: String
-        if let lm = lastModifiedDate {                // 使用服务器 Last-Modified
+        if let lm = lastModifiedDate {
             let fmt = DateFormatter()
             fmt.dateStyle = .medium
             fmt.timeStyle = .medium
-            fmt.timeZone = TimeZone(identifier: "Asia/Shanghai") // 转北京时间
+            fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
             dateStr = fmt.string(from: lm)
-        } else if let creation = attrs?[.creationDate] as? Date { // 回退到本地创建时间
+        } else if let creation = attrs?[.creationDate] as? Date {
             let fmt = DateFormatter()
             fmt.dateStyle = .medium
             fmt.timeStyle = .medium
@@ -265,13 +325,13 @@ struct OptionView: View {
         }
         
         // 在进入 MainActor.run 前保存为不可变常量
-        let finalDateStr = dateStr
-        let finalMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), finalDateStr)
-    
+        let finalMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
+        let selectedUrls = urls
+        
         await MainActor.run {
             fileInfoMessage = finalMessage
             pendingUrls = selectedUrls
-            isFileInfoPresented = true           // 无论是否有日期，都先弹窗
+            isFileInfoPresented = true
         }
     }
     @State private var isDownloading = false
