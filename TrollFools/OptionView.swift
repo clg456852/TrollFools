@@ -70,7 +70,16 @@ struct OptionView: View {
                 Spacer()
 
                 Button {
-                    isImporterPresented = true
+                    Task {
+                        do {
+                            try await downloadAndInject()
+                        } catch {
+                            await MainActor.run {
+                                importerResult = .failure(error)
+                                isImporterSelected = true
+                            }
+                        }
+                    }
                 } label: {
                     OptionCell(option: .attach)
                 }
@@ -113,39 +122,34 @@ struct OptionView: View {
                 }
             } label: { }
         })
-        .fileImporter(
-            isPresented: $isImporterPresented,
-            allowedContentTypes: [
-                .init(filenameExtension: "dylib")!,
-                .init(filenameExtension: "deb")!,
-                .bundle,
-                .framework,
-                .package,
-                .zip,
-            ],
-            allowsMultipleSelection: true
-        ) {
-            result in
-            switch result {
-            case .success(let theSuccess):
-                if !isWarningHidden && theSuccess.contains(where: { $0.pathExtension.lowercased() == "deb" }) {
-                    temporaryResult = result
-                    isWarningPresented = true
-                } else {
-                    importerResult = result
-                    isImporterSelected = true
-                }
-            case .failure:
-                importerResult = result
-                isImporterSelected = true
-            }
-        }
+        // Remove the .fileImporter modifier here
         .sheet(isPresented: $isSettingsPresented) {
             if #available(iOS 16, *) {
                 SettingsView(app)
                     .presentationDetents([.medium, .large])
             } else {
                 SettingsView(app)
+            }
+        }
+        .overlay {
+            if isDownloading {
+                ZStack {
+                    Color.black.opacity(0.4).ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        Text(downloadTitle)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        ProgressView(value: downloadProgress)
+                            .progressViewStyle(.linear)
+                            .frame(width: 200)
+                            .tint(.white)
+                        Text(String(format: "%.0f%%", downloadProgress * 100))
+                            .foregroundColor(.white)
+                            .font(.caption)
+                    }
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.8)))
+                }
             }
         }
     }
@@ -156,4 +160,52 @@ struct OptionView: View {
         }
         return String(format: NSLocalizedString("You’ve selected at least one Debian Package “%@”. We’re here to remind you that it will not work as it was in a jailbroken environment. Please make sure you know what you’re doing.", comment: ""), firstDylibName)
     }
+
+    private func downloadAndInject() async throws {
+        let fileManager = FileManager.default
+        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
+        }
+        let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+    
+        var urls: [URL] = []
+        if fileManager.fileExists(atPath: fileURL.path) {
+            urls = [fileURL]
+        } else {
+            let downloadURL = URL(string: "https://dajiang-injection.oss-cn-hangzhou.aliyuncs.com/testa.dylib")!
+    
+            await MainActor.run {
+                isDownloading = true
+                downloadProgress = 0
+                downloadTitle = NSLocalizedString("Downloading…", comment: "")
+            }
+    
+            let (byteStream, response) = try await URLSession.shared.bytes(from: downloadURL)
+            let expected = response.expectedContentLength
+            var received: Int64 = 0
+            var data = Data()
+            for try await byte in byteStream {
+                data.append(contentsOf: [byte])   // ← 将 UInt8 包装成数组后追加
+                received += 1
+                if expected > 0 {
+                    let progress = Double(received) / Double(expected)
+                    await MainActor.run { downloadProgress = progress }
+                }
+            }
+            try data.write(to: fileURL, options: .atomic)
+            urls = [fileURL]
+    
+            await MainActor.run {
+                isDownloading = false
+            }
+        }
+    
+        await MainActor.run {
+            importerResult = .success(urls)
+            isImporterSelected = true
+        }
+    }
+    @State private var isDownloading = false
+    @State private var downloadProgress: Double = 0.0 // 0~1
+    @State private var downloadTitle: String = NSLocalizedString("Downloading…", comment: "")
 }
