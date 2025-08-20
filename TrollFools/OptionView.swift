@@ -199,9 +199,11 @@ struct OptionView: View {
                 isDownloading = false
             }
         }
-    
+
+        // 在切换到主线程前，先使用不可变常量保存结果，避免捕获可变变量触发
+        let selectedUrls = urls
         await MainActor.run {
-            importerResult = .success(urls)
+            importerResult = .success(selectedUrls)
             isImporterSelected = true
         }
     }
