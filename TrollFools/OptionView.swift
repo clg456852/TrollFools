@@ -343,126 +343,54 @@ struct OptionView: View {
             isFileInfoPresented = true
         }
     }
+    // 将 checkFileStatus 函数移到 OptionView struct 内部
+    private func checkFileStatus() {
+        Task {
+            let fileManager = FileManager.default
+            guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                await MainActor.run {
+                    fileStatusText = "无法访问文档目录"
+                }
+                return
+            }
+            
+            let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+            
+            if fileManager.fileExists(atPath: fileURL.path) {
+                do {
+                    let attrs = try fileManager.attributesOfItem(atPath: fileURL.path)
+                    if let creationDate = attrs[.creationDate] as? Date {
+                        let formatter = DateFormatter()
+                        formatter.dateStyle = .medium
+                        formatter.timeStyle = .short
+                        formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+                        
+                        await MainActor.run {
+                            fileStatusText = "文件创建时间: \(formatter.string(from: creationDate))"
+                        }
+                    } else {
+                        await MainActor.run {
+                            fileStatusText = "文件存在，但无法获取创建时间"
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        fileStatusText = "无法读取文件属性"
+                    }
+                }
+            } else {
+                await MainActor.run {
+                    fileStatusText = "无文件，需下载"
+                }
+            }
+        }
+    }
+    
     @State private var isDownloading = false
     @State private var downloadProgress: Double = 0.0 // 0~1
     @State private var downloadTitle: String = NSLocalizedString("Downloading…", comment: "")
     @State private var isFileInfoPresented = false       // 新增：控制弹窗
     @State private var fileInfoMessage: String = ""      // 新增：弹窗内容
     @State private var pendingUrls: [URL]? = nil         // 新增：暂存 URL 列表
-}
-
-// 添加检查文件状态的方法
-// 在现有的 @State 变量后添加
-@State private var fileStatusText: String = "检查中..."
-
-// 在 content 视图的修饰符链中添加 .onAppear
-var content: some View {
-    VStack(spacing: 80) {
-        // ... existing code ...
-    }
-    .padding()
-    .navigationTitle(app.name)
-    .onAppear {
-        checkFileStatus()
-    }
-    .background(Group {
-        NavigationLink(isActive: $isImporterSelected) {
-            if let result = importerResult {
-                switch result {
-                case .success(let urls):
-                    InjectView(app, urlList: urls
-                        .sorted(by: { $0.lastPathComponent < $1.lastPathComponent }))
-                case .failure(let error):
-                    FailureView(
-                        title: NSLocalizedString("Error", comment: ""),
-                        error: error
-                    )
-                }
-            }
-        } label: { }
-    })
-    // Remove the .fileImporter modifier here
-    .sheet(isPresented: $isSettingsPresented) {
-        if #available(iOS 16, *) {
-            SettingsView(app)
-                .presentationDetents([.medium, .large])
-        } else {
-            SettingsView(app)
-        }
-    }
-    .overlay {
-        if isDownloading {
-            ZStack {
-                Color.black.opacity(0.4).ignoresSafeArea()
-                VStack(spacing: 16) {
-                    Text(downloadTitle)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    ProgressView(value: downloadProgress)
-                        .progressViewStyle(.linear)
-                        .frame(width: 200)
-                        .tint(.white)
-                    Text(String(format: "%.0f%%", downloadProgress * 100))
-                        .foregroundColor(.white)
-                        .font(.caption)
-                }
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.8)))
-            }
-        }
-    }
-    .alert("File Info", isPresented: $isFileInfoPresented) {     // 新增弹窗
-        Button(NSLocalizedString("Continue", comment: "")) {
-            if let urls = pendingUrls {
-                importerResult = .success(urls)
-                isImporterSelected = true
-                pendingUrls = nil
-            }
-        }
-    } message: {
-        Text(fileInfoMessage)
-    }
-}
-
-// 将 checkFileStatus 函数移到 OptionView struct 内部
-private func checkFileStatus() {
-    Task {
-        let fileManager = FileManager.default
-        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            await MainActor.run {
-                fileStatusText = "无法访问文档目录"
-            }
-            return
-        }
-        
-        let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
-        
-        if fileManager.fileExists(atPath: fileURL.path) {
-            do {
-                let attrs = try fileManager.attributesOfItem(atPath: fileURL.path)
-                if let creationDate = attrs[.creationDate] as? Date {
-                    let formatter = DateFormatter()
-                    formatter.dateStyle = .medium
-                    formatter.timeStyle = .short
-                    formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
-                    
-                    await MainActor.run {
-                        fileStatusText = "文件创建时间: \(formatter.string(from: creationDate))"
-                    }
-                } else {
-                    await MainActor.run {
-                        fileStatusText = "文件存在，但无法获取创建时间"
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    fileStatusText = "无法读取文件属性"
-                }
-            }
-        } else {
-            await MainActor.run {
-                fileStatusText = "无文件，需下载"
-            }
-        }
-    }
+    @State private var fileStatusText: String = "检查中..."
 }
