@@ -111,7 +111,8 @@ struct OptionView: View {
                         
                         // 下载完成后的提示
                         await MainActor.run {
-                            // 可以在这里添加下载成功的提示
+                            // 下载完成后更新文件状态
+                            checkFileStatus()
                         }
                     } catch {
                         await MainActor.run {
