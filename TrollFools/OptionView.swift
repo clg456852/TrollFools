@@ -263,9 +263,13 @@ struct OptionView: View {
         } else {
             dateStr = NSLocalizedString("Time unavailable", comment: "")
         }
-
+        
+        // 在进入 MainActor.run 前保存为不可变常量
+        let finalDateStr = dateStr
+        let finalMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), finalDateStr)
+    
         await MainActor.run {
-            fileInfoMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
+            fileInfoMessage = finalMessage
             pendingUrls = selectedUrls
             isFileInfoPresented = true           // 无论是否有日期，都先弹窗
         }
