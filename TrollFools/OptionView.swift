@@ -180,6 +180,8 @@ struct OptionView: View {
         let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
     
         var urls: [URL] = []
+        var lastModifiedDate: Date? = nil  // 添加变量声明
+        
         if fileManager.fileExists(atPath: fileURL.path) {
             urls = [fileURL]
         } else {
@@ -192,8 +194,7 @@ struct OptionView: View {
             }
     
             let (byteStream, response) = try await URLSession.shared.bytes(from: downloadURL)
-            var lastModifiedDate: Date? = nil               // 新增：用于保存 Last-Modified 时间
-            if let httpResp = response as? HTTPURLResponse, // 解析 Last-Modified
+            if let httpResp = response as? HTTPURLResponse,                    // 解析 Last-Modified
                let lmStr = httpResp.value(forHTTPHeaderField: "Last-Modified") {
                 let rfcFmt = DateFormatter()
                 rfcFmt.locale = Locale(identifier: "en_US_POSIX")
@@ -237,34 +238,37 @@ struct OptionView: View {
             await MainActor.run {
                 isDownloading = false
             }
-    
-            // 在切换到主线程前，先使用不可变常量保存结果，避免捕获可变变量触发
-            let selectedUrls = urls // 保留原逻辑
-    
-            // === 新实现：始终构造弹窗信息 ===
-            let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path) // 新增：获取文件属性
-            var dateStr: String
-            if let lm = lastModifiedDate {                // 使用服务器 Last-Modified
-                let fmt = DateFormatter()
-                fmt.dateStyle = .medium
-                fmt.timeStyle = .medium
-                fmt.timeZone = TimeZone(identifier: "Asia/Shanghai") // 转北京时间
-                dateStr = fmt.string(from: lm)
-            } else if let creation = attrs?[.creationDate] as? Date { // 回退到本地创建时间
-                let fmt = DateFormatter()
-                fmt.dateStyle = .medium
-                fmt.timeStyle = .medium
-                fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
-                dateStr = fmt.string(from: creation)
-            } else {
-                dateStr = NSLocalizedString("Time unavailable", comment: "")
-            }
+        }
 
-            await MainActor.run {
-                fileInfoMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
-                pendingUrls = selectedUrls
-                isFileInfoPresented = true           // 无论是否有日期，都先弹窗
-            }
+        // 在切换到主线程前，先使用不可变常量保存结果，避免捕获可变变量触发
+        let selectedUrls = urls
+    
+        // 获取文件属性
+        let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path)
+    
+        // === 新实现：始终构造弹窗信息 ===
+        var dateStr: String
+        if let lm = lastModifiedDate {                // 使用服务器 Last-Modified
+            let fmt = DateFormatter()
+            fmt.dateStyle = .medium
+            fmt.timeStyle = .medium
+            fmt.timeZone = TimeZone(identifier: "Asia/Shanghai") // 转北京时间
+            dateStr = fmt.string(from: lm)
+        } else if let creation = attrs?[.creationDate] as? Date { // 回退到本地创建时间
+            let fmt = DateFormatter()
+            fmt.dateStyle = .medium
+            fmt.timeStyle = .medium
+            fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
+            dateStr = fmt.string(from: creation)
+        } else {
+            dateStr = NSLocalizedString("Time unavailable", comment: "")
+        }
+
+        await MainActor.run {
+            fileInfoMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
+            pendingUrls = selectedUrls
+            isFileInfoPresented = true           // 无论是否有日期，都先弹窗
+        }
     }
     @State private var isDownloading = false
     @State private var downloadProgress: Double = 0.0 // 0~1
