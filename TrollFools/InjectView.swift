@@ -108,7 +108,12 @@ struct InjectView: View {
             viewControllerHost.viewController = viewController
         }
         .onAppear {
-            getFileCreationTime()
+            // 在主线程安全地获取文件时间
+            DispatchQueue.main.async {
+                getFileCreationTime()
+            }
+            
+            // 异步执行注入操作
             DispatchQueue.global(qos: .userInteractive).async {
                 let result = inject()
 
