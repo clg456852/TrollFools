@@ -113,6 +113,12 @@ struct OptionView: View {
 
                 Spacer()
             }
+            // 新增文件状态显示
+            Text(fileStatusText)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+                .multilineTextAlignment(.center)
             // 新增下载按钮
             Button {
                 Task {
@@ -142,11 +148,6 @@ struct OptionView: View {
                 Label("下载新文件", systemImage: "arrow.down.circle")
             }
             .disabled(isDownloading) // 下载时禁用按钮
-            // 新增文件状态显示
-            Text(fileStatusText)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
             
             Button {
                 isSettingsPresented = true
@@ -378,8 +379,16 @@ struct OptionView: View {
                         formatter.timeStyle = .short
                         formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
                         
-                        await MainActor.run {
-                            fileStatusText = "文件版本: \(formatter.string(from: creationDate))"
+                        if let fileSize = attrs[.size] as? Int64 {
+                            let sizeInKB = Double(fileSize) / 1024
+                            let sizeString = String(format: "%.2f KB", sizeInKB)
+                            await MainActor.run {
+                                fileStatusText = "文件版本: \(formatter.string(from: creationDate)) | 大小: \(sizeString)"
+                            }
+                        } else {
+                            await MainActor.run {
+                                fileStatusText = "文件版本: \(formatter.string(from: creationDate)) | 大小: 未知"
+                            }
                         }
                     } else {
                         await MainActor.run {

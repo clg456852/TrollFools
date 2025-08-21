@@ -16,6 +16,7 @@ struct InjectView: View {
 
     @State var injectResult: Result<URL?, Error>?
     @StateObject fileprivate var viewControllerHost = ViewControllerHost()
+    @State private var fileCreationTime: String = "获取中..."
 
     @AppStorage var useWeakReference: Bool
     @AppStorage var preferMainExecutable: Bool
@@ -47,6 +48,21 @@ struct InjectView: View {
 
     var bodyContent: some View {
         VStack {
+            // 添加显眼的固定信息标签
+            Text("文件版本")
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+                .padding(.bottom, 20)
+            
+            Text(fileCreationTime)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+                .padding(.bottom, 30)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+
             if let injectResult {
                 switch injectResult {
                 case let .success(url):
@@ -79,7 +95,7 @@ struct InjectView: View {
                         .padding(.all, 20)
                         .scaleEffect(2.0)
                 }
-
+            
                 Text(NSLocalizedString("Injecting", comment: ""))
                     .font(.headline)
             }
@@ -94,6 +110,12 @@ struct InjectView: View {
             viewControllerHost.viewController = viewController
         }
         .onAppear {
+            // 在主线程安全地获取文件时间
+            DispatchQueue.main.async {
+                getFileCreationTime()
+            }
+            
+            // 异步执行注入操作
             DispatchQueue.global(qos: .userInteractive).async {
                 let result = inject()
 
@@ -104,6 +126,27 @@ struct InjectView: View {
                         .view.isUserInteractionEnabled = true
                 }
             }
+        }
+    }
+    
+    private func getFileCreationTime() {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+        
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+            if let creationDate = attributes[.creationDate] as? Date {
+                let formatter = DateFormatter()
+                formatter.dateStyle = .medium
+                formatter.timeStyle = .medium
+                formatter.locale = Locale(identifier: "zh_CN")
+                formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
+                fileCreationTime = formatter.string(from: creationDate)
+            } else {
+                fileCreationTime = "无法获取创建时间"
+            }
+        } catch {
+            fileCreationTime = "文件不存在"
         }
     }
 
