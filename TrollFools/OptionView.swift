@@ -376,7 +376,10 @@ struct OptionView: View {
         
         await MainActor.run {
             importerResult = .success(selectedUrls)
-            isImporterSelected = true
+            // 添加小延迟以避免状态冲突
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                isImporterSelected = true
+            }
         }
     }
     // 将 checkFileStatus 函数移到 OptionView struct 内部
