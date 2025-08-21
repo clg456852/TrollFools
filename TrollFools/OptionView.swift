@@ -348,35 +348,11 @@ struct OptionView: View {
             }
             return
         }
-        
-        // // 获取文件属性
-        // let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path)
-        
-        // // 构造弹窗信息
-        // var dateStr: String
-        // if let lm = lastModifiedDate {
-        //     let fmt = DateFormatter()
-        //     fmt.dateStyle = .medium
-        //     fmt.timeStyle = .medium
-        //     fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
-        //     dateStr = fmt.string(from: lm)
-        // } else if let creation = attrs?[.creationDate] as? Date {
-        //     let fmt = DateFormatter()
-        //     fmt.dateStyle = .medium
-        //     fmt.timeStyle = .medium
-        //     fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
-        //     dateStr = fmt.string(from: creation)
-        // } else {
-        //     dateStr = NSLocalizedString("Time unavailable", comment: "")
-        // }
-        
-        // // 在进入 MainActor.run 前保存为不可变常量
-        // let finalMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
         let selectedUrls = urls
         
         await MainActor.run {
-            importerResult = .success(selectedUrls)
-            isImporterSelected = true
+            // importerResult = .success(selectedUrls)
+            // isImporterSelected = true
         }
     }
     // 将 checkFileStatus 函数移到 OptionView struct 内部
