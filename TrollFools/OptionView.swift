@@ -301,23 +301,16 @@ struct OptionView: View {
         
         // 如果有 lastModifiedDate，将其设置为文件的创建时间
         if let lastModifiedDate = lastModifiedDate {
-            // 转换为北京时间
-            let beijingTimeZone = TimeZone(identifier: "Asia/Shanghai")!
-            let calendar = Calendar.current
-            var dateComponents = calendar.dateComponents(in: beijingTimeZone, from: lastModifiedDate)
+            // 直接使用服务器返回的时间，不进行时区转换
+            let attributes: [FileAttributeKey: Any] = [
+                .creationDate: lastModifiedDate,
+                .modificationDate: lastModifiedDate
+            ]
             
-            if let beijingDate = calendar.date(from: dateComponents) {
-                // 设置文件的创建时间和修改时间
-                let attributes: [FileAttributeKey: Any] = [
-                .creationDate: beijingDate,
-                .modificationDate: beijingDate
-                ]
-                
-                do {
-                    try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
-                } catch {
-                    print("Failed to set file attributes: \(error)")
-                }
+            do {
+                try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
+            } catch {
+                print("Failed to set file attributes: \(error)")
             }
         }
         await MainActor.run {
@@ -351,8 +344,8 @@ struct OptionView: View {
         let selectedUrls = urls
         
         await MainActor.run {
-            // importerResult = .success(selectedUrls)
-            // isImporterSelected = true
+            importerResult = .success(selectedUrls)
+            isImporterSelected = true
         }
     }
     // 将 checkFileStatus 函数移到 OptionView struct 内部
