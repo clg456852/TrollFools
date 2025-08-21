@@ -187,6 +187,14 @@ struct OptionView: View {
         .padding()
         .navigationTitle(app.name)
         .onAppear {
+            // 删除已存在的injection.dylib文件
+            let fileManager = FileManager.default
+            if let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+                if fileManager.fileExists(atPath: fileURL.path) {
+                    try? fileManager.removeItem(at: fileURL)
+                }
+            }
             checkFileStatus()
         }
         .background(Group {
