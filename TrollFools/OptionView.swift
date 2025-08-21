@@ -36,35 +36,6 @@ struct OptionView: View {
     var body: some View {
         if #available(iOS 15, *) {
             content
-                .alert(
-                    "提示",
-                    isPresented: $isWarningPresented,
-                    presenting: temporaryResult
-                ) { result in
-                    Button {
-                        importerResult = result
-                        isImporterSelected = true
-                    } label: {
-                        Text("继续")
-                    }
-                    Button(role: .destructive) {
-                        importerResult = result
-                        isImporterSelected = true
-                        isWarningHidden = true
-                    } label: {
-                        Text("继续且不再显示")
-                    }
-                    Button(role: .cancel) {
-                        temporaryResult = nil
-                        isWarningPresented = false
-                    } label: {
-                        Text("取消")
-                    }
-                } message: {
-                    if case .success(let urls) = $0 {
-                        Text(Self.warningMessage(urls))
-                    }
-                }
                 // 添加简单的无文件弹窗
                 .alert(
                     "提示",
@@ -308,19 +279,19 @@ struct OptionView: View {
         try data.write(to: fileURL, options: .atomic)
         
         // 如果有 lastModifiedDate，将其设置为文件的创建时间
-        if let lastModifiedDate = lastModifiedDate {
-            // 直接使用服务器返回的时间，不进行时区转换
-            let attributes: [FileAttributeKey: Any] = [
-                .creationDate: lastModifiedDate,
-                .modificationDate: lastModifiedDate
-            ]
+        // if let lastModifiedDate = lastModifiedDate {
+        //     // 直接使用服务器返回的时间，不进行时区转换
+        //     let attributes: [FileAttributeKey: Any] = [
+        //         .creationDate: lastModifiedDate,
+        //         .modificationDate: lastModifiedDate
+        //     ]
             
-            do {
-                try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
-            } catch {
-                print("Failed to set file attributes: \(error)")
-            }
-        }
+        //     do {
+        //         try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
+        //     } catch {
+        //         print("Failed to set file attributes: \(error)")
+        //     }
+        // }
         await MainActor.run {
             isDownloading = false
         }
