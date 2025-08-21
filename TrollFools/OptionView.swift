@@ -9,6 +9,9 @@ import SwiftUI
 
 struct OptionView: View {
     let app: App
+    // 添加URL常量
+    private let debugDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/debug/testa.dylib"
+    private let releaseDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/release/testa.dylib"
 
     @State var isImporterPresented = false
     @State var isImporterSelected = false
@@ -27,11 +30,14 @@ struct OptionView: View {
         self.app = app
     }
 
+    // 添加简单弹窗状态变量
+    @State var isNoFileAlertPresented = false
+    
     var body: some View {
         if #available(iOS 15, *) {
             content
                 .alert(
-                    NSLocalizedString("Notice", comment: ""),
+                    "提示",
                     isPresented: $isWarningPresented,
                     presenting: temporaryResult
                 ) { result in
@@ -39,25 +45,36 @@ struct OptionView: View {
                         importerResult = result
                         isImporterSelected = true
                     } label: {
-                        Text(NSLocalizedString("Continue", comment: ""))
+                        Text("继续")
                     }
                     Button(role: .destructive) {
                         importerResult = result
                         isImporterSelected = true
                         isWarningHidden = true
                     } label: {
-                        Text(NSLocalizedString("Continue and Don’t Show Again", comment: ""))
+                        Text("继续且不再显示")
                     }
                     Button(role: .cancel) {
                         temporaryResult = nil
                         isWarningPresented = false
                     } label: {
-                        Text(NSLocalizedString("Cancel", comment: ""))
+                        Text("取消")
                     }
                 } message: {
                     if case .success(let urls) = $0 {
                         Text(Self.warningMessage(urls))
                     }
+                }
+                // 添加简单的无文件弹窗
+                .alert(
+                    "提示",
+                    isPresented: $isNoFileAlertPresented
+                ) {
+                    Button("确定") {
+                        isNoFileAlertPresented = false
+                    }
+                } message: {
+                    Text("无文件")
                 }
         } else {
             content
@@ -105,7 +122,7 @@ struct OptionView: View {
                             throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
                         }
                         let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
-                        let downloadURL = URL(string: "https://dajiang-injection.oss-cn-hangzhou.aliyuncs.com/testa.dylib")!
+                        let downloadURL = URL(string: releaseDownloadURL)!
                         
                         _ = try await downloadFile(from: downloadURL, to: fileURL)
                         
@@ -122,7 +139,7 @@ struct OptionView: View {
                     }
                 }
             } label: {
-                Label("Download File", systemImage: "arrow.down.circle")
+                Label("下载新文件", systemImage: "arrow.down.circle")
             }
             .disabled(isDownloading) // 下载时禁用按钮
             // 新增文件状态显示
@@ -137,6 +154,35 @@ struct OptionView: View {
                 Label(NSLocalizedString("Advanced Settings", comment: ""),
                       systemImage: "gear")
             }
+            // debug
+            Button {
+                Task {
+                    do {
+                        let fileManager = FileManager.default
+                        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
+                        }
+                        let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+                        let downloadURL = URL(string: debugDownloadURL)!
+                        
+                        _ = try await downloadFile(from: downloadURL, to: fileURL)
+                        
+                        // 下载完成后的提示
+                        await MainActor.run {
+                            // 下载完成后更新文件状态
+                            checkFileStatus()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            importerResult = .failure(error)
+                            isImporterSelected = true
+                        }
+                    }
+                }
+            } label: {
+                Label("debug", systemImage: "ladybug")
+            }
+            .disabled(isDownloading) // 下载时禁用按钮
         }
         .padding()
         .navigationTitle(app.name)
@@ -188,17 +234,6 @@ struct OptionView: View {
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.8)))
                 }
             }
-        }
-        .alert("File Info", isPresented: $isFileInfoPresented) {     // 新增弹窗
-            Button(NSLocalizedString("Continue", comment: "")) {
-                if let urls = pendingUrls {
-                    importerResult = .success(urls)
-                    isImporterSelected = true
-                    pendingUrls = nil
-                }
-            }
-        } message: {
-            Text(fileInfoMessage)
         }
     }
 
@@ -307,41 +342,41 @@ struct OptionView: View {
         if fileManager.fileExists(atPath: fileURL.path) {
             urls = [fileURL]
         } else {
-            // 如果本地文件不存在，则下载
-            let downloadURL = URL(string: "https://dajiang-injection.oss-cn-hangzhou.aliyuncs.com/testa.dylib")!
-            lastModifiedDate = try await downloadFile(from: downloadURL, to: fileURL)
-            urls = [fileURL]
+            // 如果本地文件不存在，则弹窗
+            await MainActor.run {
+                isNoFileAlertPresented = true
+            }
+            return
         }
         
-        // 获取文件属性
-        let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path)
+        // // 获取文件属性
+        // let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path)
         
-        // 构造弹窗信息
-        var dateStr: String
-        if let lm = lastModifiedDate {
-            let fmt = DateFormatter()
-            fmt.dateStyle = .medium
-            fmt.timeStyle = .medium
-            fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
-            dateStr = fmt.string(from: lm)
-        } else if let creation = attrs?[.creationDate] as? Date {
-            let fmt = DateFormatter()
-            fmt.dateStyle = .medium
-            fmt.timeStyle = .medium
-            fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
-            dateStr = fmt.string(from: creation)
-        } else {
-            dateStr = NSLocalizedString("Time unavailable", comment: "")
-        }
+        // // 构造弹窗信息
+        // var dateStr: String
+        // if let lm = lastModifiedDate {
+        //     let fmt = DateFormatter()
+        //     fmt.dateStyle = .medium
+        //     fmt.timeStyle = .medium
+        //     fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        //     dateStr = fmt.string(from: lm)
+        // } else if let creation = attrs?[.creationDate] as? Date {
+        //     let fmt = DateFormatter()
+        //     fmt.dateStyle = .medium
+        //     fmt.timeStyle = .medium
+        //     fmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
+        //     dateStr = fmt.string(from: creation)
+        // } else {
+        //     dateStr = NSLocalizedString("Time unavailable", comment: "")
+        // }
         
-        // 在进入 MainActor.run 前保存为不可变常量
-        let finalMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
+        // // 在进入 MainActor.run 前保存为不可变常量
+        // let finalMessage = String(format: NSLocalizedString("File creation time: %@", comment: ""), dateStr)
         let selectedUrls = urls
         
         await MainActor.run {
-            fileInfoMessage = finalMessage
-            pendingUrls = selectedUrls
-            isFileInfoPresented = true
+            importerResult = .success(selectedUrls)
+            isImporterSelected = true
         }
     }
     // 将 checkFileStatus 函数移到 OptionView struct 内部
@@ -367,7 +402,7 @@ struct OptionView: View {
                         formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
                         
                         await MainActor.run {
-                            fileStatusText = "文件创建时间: \(formatter.string(from: creationDate))"
+                            fileStatusText = "文件版本: \(formatter.string(from: creationDate))"
                         }
                     } else {
                         await MainActor.run {
@@ -390,8 +425,5 @@ struct OptionView: View {
     @State private var isDownloading = false
     @State private var downloadProgress: Double = 0.0 // 0~1
     @State private var downloadTitle: String = NSLocalizedString("Downloading…", comment: "")
-    @State private var isFileInfoPresented = false       // 新增：控制弹窗
-    @State private var fileInfoMessage: String = ""      // 新增：弹窗内容
-    @State private var pendingUrls: [URL]? = nil         // 新增：暂存 URL 列表
     @State private var fileStatusText: String = "检查中..."
 }
