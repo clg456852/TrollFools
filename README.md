@@ -1,4 +1,4 @@
-# TrollFools
+# DjInjection
 
 [now-on-havoc]: https://havoc.app/package/trollfools
 

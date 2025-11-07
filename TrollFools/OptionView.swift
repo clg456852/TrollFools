@@ -11,6 +11,7 @@ struct OptionView: View {
     let app: App
     // 添加URL常量
     private let debugDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/debug/testa.dylib"
+    private let preDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/pre/testa.dylib"
     private let releaseDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/release/testa.dylib"
 
     @State var isImporterPresented = false
@@ -128,7 +129,9 @@ struct OptionView: View {
                             throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
                         }
                         let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
-                        let downloadURL = URL(string: releaseDownloadURL)!
+                        guard let downloadURL = URL(string: releaseDownloadURL) else {
+                            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid download URL"])
+                        }
                         
                         _ = try await downloadFile(from: downloadURL, to: fileURL)
                         
@@ -149,6 +152,38 @@ struct OptionView: View {
             }
             .disabled(isDownloading) // 下载时禁用按钮
             
+            // pre 下载按钮
+            Button {
+                Task {
+                    do {
+                        let fileManager = FileManager.default
+                        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+                            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
+                        }
+                        let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
+                        guard let downloadURL = URL(string: preDownloadURL) else {
+                            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid download URL"])
+                        }
+                        
+                        _ = try await downloadFile(from: downloadURL, to: fileURL)
+                        
+                        // 下载完成后的提示
+                        await MainActor.run {
+                            // 下载完成后更新文件状态
+                            checkFileStatus()
+                        }
+                    } catch {
+                        await MainActor.run {
+                            importerResult = .failure(error)
+                            isImporterSelected = true
+                        }
+                    }
+                }
+            } label: {
+                Label("pre", systemImage: "testtube.2")
+            }
+            .disabled(isDownloading) // 下载时禁用按钮
+            
             Button {
                 isSettingsPresented = true
             } label: {
@@ -164,7 +199,9 @@ struct OptionView: View {
                             throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Unable to access documents directory"])
                         }
                         let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
-                        let downloadURL = URL(string: debugDownloadURL)!
+                        guard let downloadURL = URL(string: debugDownloadURL) else {
+                            throw NSError(domain: "", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid download URL"])
+                        }
                         
                         _ = try await downloadFile(from: downloadURL, to: fileURL)
                         
@@ -189,6 +226,11 @@ struct OptionView: View {
         .navigationTitle(app.name)
         .onAppear {
             checkFileStatus()
+        }
+        .onDisappear {
+            // 清理任务，避免内存泄漏
+            checkFileStatusTask?.cancel()
+            checkFileStatusTask = nil
         }
         .background(Group {
             NavigationLink(isActive: $isImporterSelected) {
@@ -247,10 +289,24 @@ struct OptionView: View {
 
     // 新增：专门处理文件下载的函数
     private func downloadFile(from url: URL, to fileURL: URL) async throws -> Date? {
+        // 确保下载状态在函数结束时总是被重置
+        defer {
+            Task { @MainActor in
+                isDownloading = false
+            }
+        }
+        
         await MainActor.run {
             isDownloading = true
             downloadProgress = 0
             downloadTitle = NSLocalizedString("Downloading…", comment: "")
+        }
+        
+        // 确保目标目录存在
+        let fileManager = FileManager.default
+        let directoryURL = fileURL.deletingLastPathComponent()
+        if !fileManager.fileExists(atPath: directoryURL.path) {
+            try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         }
         
         let (byteStream, response) = try await URLSession.shared.bytes(from: url)
@@ -314,9 +370,6 @@ struct OptionView: View {
                 print("Failed to set file attributes: \(error)")
             }
         }
-        await MainActor.run {
-            isDownloading = false
-        }
         
         return lastModifiedDate
     }
@@ -329,29 +382,25 @@ struct OptionView: View {
         }
         let fileURL = documentsDirectory.appendingPathComponent("injection.dylib")
         
-        var urls: [URL] = []
-        var lastModifiedDate: Date? = nil
-        
         // 检查本地文件是否存在
         if fileManager.fileExists(atPath: fileURL.path) {
-            urls = [fileURL]
+            let selectedUrls = [fileURL]
+            await MainActor.run {
+                importerResult = .success(selectedUrls)
+                isImporterSelected = true
+            }
         } else {
             // 如果本地文件不存在，则弹窗
             await MainActor.run {
                 isNoFileAlertPresented = true
             }
-            return
-        }
-        let selectedUrls = urls
-        
-        await MainActor.run {
-            importerResult = .success(selectedUrls)
-            isImporterSelected = true
         }
     }
     // 将 checkFileStatus 函数移到 OptionView struct 内部
     private func checkFileStatus() {
-        Task {
+        // 取消之前的任务，避免并发问题
+        checkFileStatusTask?.cancel()
+        checkFileStatusTask = Task {
             let fileManager = FileManager.default
             guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
                 await MainActor.run {
@@ -404,4 +453,5 @@ struct OptionView: View {
     @State private var downloadProgress: Double = 0.0 // 0~1
     @State private var downloadTitle: String = NSLocalizedString("Downloading…", comment: "")
     @State private var fileStatusText: String = "检查中..."
+    @State private var checkFileStatusTask: Task<Void, Never>?
 }
