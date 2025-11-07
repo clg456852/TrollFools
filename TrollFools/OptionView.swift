@@ -152,6 +152,13 @@ struct OptionView: View {
             }
             .disabled(isDownloading) // 下载时禁用按钮
             
+            Button {
+                isSettingsPresented = true
+            } label: {
+                Label(NSLocalizedString("Advanced Settings", comment: ""),
+                      systemImage: "gear")
+            }
+            
             // pre 下载按钮
             Button {
                 Task {
@@ -184,12 +191,6 @@ struct OptionView: View {
             }
             .disabled(isDownloading) // 下载时禁用按钮
             
-            Button {
-                isSettingsPresented = true
-            } label: {
-                Label(NSLocalizedString("Advanced Settings", comment: ""),
-                      systemImage: "gear")
-            }
             // debug
             Button {
                 Task {
