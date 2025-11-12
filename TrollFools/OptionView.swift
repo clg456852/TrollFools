@@ -92,10 +92,10 @@ struct OptionView: View {
                 Button {
                     Task {
                         do {
-                            DDLogInfo("OptionView: 开始尝试使用本地文件注入", ddlog: InjectorV3.main.logger)
+                            DDLogInfo("OptionView: 开始尝试使用本地文件注入", ddlog: .sharedInstance)
                             try await downloadAndInject()
                         } catch {
-                            DDLogError("OptionView: 注入流程发生错误 \(error)", ddlog: InjectorV3.main.logger)
+                            DDLogError("OptionView: 注入流程发生错误 \(error)", ddlog: .sharedInstance)
                             await MainActor.run {
                                 importerResult = .failure(error)
                                 isImporterSelected = true
@@ -328,12 +328,12 @@ struct OptionView: View {
             try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         }
         
-        DDLogInfo("OptionView.downloadFile: 请求地址 \(url.absoluteString)", ddlog: InjectorV3.main.logger)
+        DDLogInfo("OptionView.downloadFile: 请求地址 \(url.absoluteString)", ddlog: .sharedInstance)
         let (byteStream, response) = try await URLSession.shared.bytes(from: url)
         if let httpResp = response as? HTTPURLResponse {
             let lm = httpResp.value(forHTTPHeaderField: "Last-Modified") ?? "nil"
             let etag = httpResp.value(forHTTPHeaderField: "ETag") ?? "nil"
-            DDLogInfo("OptionView.downloadFile: 状态=\(httpResp.statusCode) 内容长度=\(response.expectedContentLength) Last-Modified=\(lm) ETag=\(etag)", ddlog: InjectorV3.main.logger)
+            DDLogInfo("OptionView.downloadFile: 状态=\(httpResp.statusCode) 内容长度=\(response.expectedContentLength) Last-Modified=\(lm) ETag=\(etag)", ddlog: .sharedInstance)
         }
         
         // 解析 Last-Modified
@@ -380,7 +380,7 @@ struct OptionView: View {
         }
         
         try data.write(to: fileURL, options: .atomic)
-        DDLogInfo("OptionView.downloadFile: 已写入文件 \(fileURL.lastPathComponent) 大小=\(data.count) 字节", ddlog: InjectorV3.main.logger)
+        DDLogInfo("OptionView.downloadFile: 已写入文件 \(fileURL.lastPathComponent) 大小=\(data.count) 字节", ddlog: .sharedInstance)
         
         // 如果有 lastModifiedDate，将其设置为文件的创建时间
         if let lastModifiedDate = lastModifiedDate {
@@ -393,17 +393,17 @@ struct OptionView: View {
             do {
                 try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
             } catch {
-                DDLogWarn("OptionView.downloadFile: 设置文件属性失败 \(error)", ddlog: InjectorV3.main.logger)
+                DDLogWarn("OptionView.downloadFile: 设置文件属性失败 \(error)", ddlog: .sharedInstance)
             }
         } else {
-            DDLogWarn("OptionView.downloadFile: 服务端未提供 Last-Modified，改用系统时间戳", ddlog: InjectorV3.main.logger)
+            DDLogWarn("OptionView.downloadFile: 服务端未提供 Last-Modified，改用系统时间戳", ddlog: .sharedInstance)
         }
         
         if let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path) {
             let size = (attrs[.size] as? NSNumber)?.int64Value ?? -1
             let cdate = (attrs[.creationDate] as? Date)?.description ?? "nil"
             let mdate = (attrs[.modificationDate] as? Date)?.description ?? "nil"
-            DDLogInfo("OptionView.downloadFile: 最终文件信息 size=\(size) 创建时间=\(cdate) 修改时间=\(mdate)", ddlog: InjectorV3.main.logger)
+            DDLogInfo("OptionView.downloadFile: 最终文件信息 size=\(size) 创建时间=\(cdate) 修改时间=\(mdate)", ddlog: .sharedInstance)
         }
         
         return lastModifiedDate
@@ -423,7 +423,7 @@ struct OptionView: View {
             if let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path) {
                 let cdate = (attrs[.creationDate] as? Date)?.description ?? "nil"
                 let mdate = (attrs[.modificationDate] as? Date)?.description ?? "nil"
-                DDLogInfo("OptionView: 使用本地文件注入 创建时间=\(cdate) 修改时间=\(mdate)", ddlog: InjectorV3.main.logger)
+                DDLogInfo("OptionView: 使用本地文件注入 创建时间=\(cdate) 修改时间=\(mdate)", ddlog: .sharedInstance)
             }
             await MainActor.run {
                 importerResult = .success(selectedUrls)
@@ -431,7 +431,7 @@ struct OptionView: View {
             }
         } else {
             // 如果本地文件不存在，则弹窗
-            DDLogWarn("OptionView: 本地不存在 injection.dylib，无法注入", ddlog: InjectorV3.main.logger)
+            DDLogWarn("OptionView: 本地不存在 injection.dylib，无法注入", ddlog: .sharedInstance)
             await MainActor.run {
                 isNoFileAlertPresented = true
             }
@@ -467,30 +467,30 @@ struct OptionView: View {
                             await MainActor.run {
                                 fileStatusText = "文件版本: \(formatter.string(from: creationDate)) | 大小: \(sizeString)"
                             }
-                            DDLogInfo("OptionView.checkFileStatus: 文件存在 size=\(fileSize)B 创建时间=\(creationDate) 修改时间=\(attrs[.modificationDate] as? Date as Any)", ddlog: InjectorV3.main.logger)
+                            DDLogInfo("OptionView.checkFileStatus: 文件存在 size=\(fileSize)B 创建时间=\(creationDate) 修改时间=\(attrs[.modificationDate] as? Date as Any)", ddlog: .sharedInstance)
                         } else {
                             await MainActor.run {
                                 fileStatusText = "文件版本: \(formatter.string(from: creationDate)) | 大小: 未知"
                             }
-                            DDLogWarn("OptionView.checkFileStatus: 文件存在但无法获取大小", ddlog: InjectorV3.main.logger)
+                            DDLogWarn("OptionView.checkFileStatus: 文件存在但无法获取大小", ddlog: .sharedInstance)
                         }
                     } else {
                         await MainActor.run {
                             fileStatusText = "文件存在，但无法获取创建时间"
                         }
-                        DDLogWarn("OptionView.checkFileStatus: 文件存在但无法读取创建时间", ddlog: InjectorV3.main.logger)
+                        DDLogWarn("OptionView.checkFileStatus: 文件存在但无法读取创建时间", ddlog: .sharedInstance)
                     }
                 } catch {
                     await MainActor.run {
                         fileStatusText = "无法读取文件属性"
                     }
-                    DDLogError("OptionView.checkFileStatus: 读取文件属性失败 \(error)", ddlog: InjectorV3.main.logger)
+                    DDLogError("OptionView.checkFileStatus: 读取文件属性失败 \(error)", ddlog: .sharedInstance)
                 }
             } else {
                 await MainActor.run {
                     fileStatusText = "无文件，需下载"
                 }
-                DDLogInfo("OptionView.checkFileStatus: 未找到本地文件", ddlog: InjectorV3.main.logger)
+                DDLogInfo("OptionView.checkFileStatus: 未找到本地文件", ddlog: .sharedInstance)
             }
         }
     }
@@ -509,7 +509,7 @@ struct OptionView: View {
     @MainActor
     private func exportLatestLogAndPresentShare() async {
         guard let latestURL = InjectorV3.main.latestLogFileURL else {
-            DDLogWarn("OptionView: 未找到最新日志文件", ddlog: InjectorV3.main.logger)
+            DDLogWarn("OptionView: 未找到最新日志文件", ddlog: .sharedInstance)
             return
         }
         do {
@@ -531,11 +531,11 @@ struct OptionView: View {
                 try? fileManager.removeItem(at: destinationURL)
             }
             try fileManager.copyItem(at: latestURL, to: destinationURL)
-            DDLogInfo("OptionView: 已复制日志到 \(destinationURL.lastPathComponent)", ddlog: InjectorV3.main.logger)
+            DDLogInfo("OptionView: 已复制日志到 \(destinationURL.lastPathComponent)", ddlog: .sharedInstance)
             shareURL = destinationURL
             isSharePresented = true
         } catch {
-            DDLogError("OptionView: 导出日志失败 \(error)", ddlog: InjectorV3.main.logger)
+            DDLogError("OptionView: 导出日志失败 \(error)", ddlog: .sharedInstance)
         }
     }
 }
