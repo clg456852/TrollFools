@@ -7,10 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		156B469E2EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156B469C2EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift */; };
-		156B469F2EC4E2CD003107F9 /* TimeZone+China.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156B469D2EC4E2CD003107F9 /* TimeZone+China.swift */; };
-		156B46A02EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156B469C2EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift */; };
-		156B46A12EC4E2CD003107F9 /* TimeZone+China.swift in Sources */ = {isa = PBXBuildFile; fileRef = 156B469D2EC4E2CD003107F9 /* TimeZone+China.swift */; };
 		6124A06D2CD2322400C52253 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6124A06C2CD2322400C52253 /* App.swift */; };
 		6124A06F2CD2324200C52253 /* AppListModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6124A06E2CD2324200C52253 /* AppListModel.swift */; };
 		6124A0712CD2326500C52253 /* FilterOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6124A0702CD2326500C52253 /* FilterOptions.swift */; };
@@ -140,8 +136,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		156B469C2EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChinaTimeZoneLogFormatter.swift; sourceTree = "<group>"; };
-		156B469D2EC4E2CD003107F9 /* TimeZone+China.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "TimeZone+China.swift"; sourceTree = "<group>"; };
 		6124A06C2CD2322400C52253 /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
 		6124A06E2CD2324200C52253 /* AppListModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppListModel.swift; sourceTree = "<group>"; };
 		6124A0702CD2326500C52253 /* FilterOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterOptions.swift; sourceTree = "<group>"; };
@@ -330,8 +324,6 @@
 				61EFA3722D30347600159442 /* InjectorV3+MachO.swift */,
 				61EFA3762D30401A00159442 /* InjectorV3+Metadata.swift */,
 				61EFA3742D303C3700159442 /* InjectorV3+Preprocess.swift */,
-				156B469C2EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift */,
-				156B469D2EC4E2CD003107F9 /* TimeZone+China.swift */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -614,8 +606,6 @@
 			files = (
 				614C0C532D7C2E98007E9184 /* Execute.swift in Sources */,
 				614C0C542D7C2E98007E9184 /* InjectorV3+MachO.swift in Sources */,
-				156B46A02EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift in Sources */,
-				156B46A12EC4E2CD003107F9 /* TimeZone+China.swift in Sources */,
 				614C0C552D7C2E98007E9184 /* InjectorV3+Metadata.swift in Sources */,
 				CC8A367B2D7EC5B700BE90D3 /* CmdInject.swift in Sources */,
 				614C0C562D7C2E98007E9184 /* AuxiliaryExecute.swift in Sources */,
@@ -671,8 +661,6 @@
 				61C7D54C2D82DBAD0064D626 /* DisclaimerView.swift in Sources */,
 				6124A07F2CD233BA00C52253 /* PlugInCell.swift in Sources */,
 				61EFA37B2D31165700159442 /* InjectorV3+Backup.swift in Sources */,
-				156B469E2EC4E2CD003107F9 /* ChinaTimeZoneLogFormatter.swift in Sources */,
-				156B469F2EC4E2CD003107F9 /* TimeZone+China.swift in Sources */,
 				61EFA3712D3033BB00159442 /* InjectorV3+Error.swift in Sources */,
 				6124A06F2CD2324200C52253 /* AppListModel.swift in Sources */,
 				CCB6A1192C4A58C7000D75B0 /* OptionView.swift in Sources */,
