@@ -343,7 +343,7 @@ struct OptionView: View {
             let rfcFmt = DateFormatter()
             rfcFmt.locale = Locale(identifier: "en_US_POSIX")
             rfcFmt.dateFormat = "E, dd MMM yyyy HH:mm:ss z"
-            rfcFmt.timeZone = TimeZone(abbreviation: "GMT")
+            rfcFmt.timeZone = TimeZone(identifier: "Asia/Shanghai")
             lastModifiedDate = rfcFmt.date(from: lmStr)
         }
         
