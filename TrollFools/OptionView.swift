@@ -237,10 +237,10 @@ struct OptionView: View {
             checkFileStatusTask?.cancel()
             checkFileStatusTask = nil
         }
-        // 摇一摇导出日志监控
+        // 摇一摇查看日志
         .onReceive(NotificationCenter.default.publisher(for: .deviceDidShakeNotification)) { _ in
             Task {
-                await exportLatestLogAndPresentShare()
+                await presentLatestLogSheet()
             }
         }
         .background(Group {
@@ -268,10 +268,10 @@ struct OptionView: View {
                 SettingsView(app)
             }
         }
-        // 分享面板
-        .sheet(isPresented: $isSharePresented) {
-            if let shareURL {
-                ActivityView(activityItems: [shareURL])
+        // 日志面板
+        .sheet(isPresented: $isLogsPresented) {
+            if let latestLogURL {
+                LogsView(url: latestLogURL)
             }
         }
         // 注入隐藏摇一摇探测器
@@ -501,46 +501,24 @@ struct OptionView: View {
     @State private var fileStatusText: String = "检查中..."
     @State private var checkFileStatusTask: Task<Void, Never>?
     
-    // 分享相关状态
-    @State private var isSharePresented = false
-    @State private var shareURL: URL?
+    // 日志查看状态
+    @State private var isLogsPresented = false
+    @State private var latestLogURL: URL?
 
-    // 导出最新日志到 Documents 并弹出分享
+    // 展示最新日志
     @MainActor
-    private func exportLatestLogAndPresentShare() async {
+    private func presentLatestLogSheet() async {
         guard let latestURL = InjectorV3.main.latestLogFileURL else {
             DDLogWarn("OptionView: 未找到最新日志文件", ddlog: .sharedInstance)
             return
         }
-        do {
-            let fileManager = FileManager.default
-            let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
-            let exportDirectoryURL = documentsURL.appendingPathComponent("TrollFoolsLogs", isDirectory: true)
-
-            if !fileManager.fileExists(atPath: exportDirectoryURL.path) {
-                try fileManager.createDirectory(at: exportDirectoryURL, withIntermediateDirectories: true)
-            } else {
-                let existingFiles = try fileManager.contentsOfDirectory(at: exportDirectoryURL, includingPropertiesForKeys: nil)
-                for file in existingFiles {
-                    try? fileManager.removeItem(at: file)
-                }
-            }
-
-            let destinationURL = exportDirectoryURL.appendingPathComponent(latestURL.lastPathComponent)
-            if fileManager.fileExists(atPath: destinationURL.path) {
-                try? fileManager.removeItem(at: destinationURL)
-            }
-            try fileManager.copyItem(at: latestURL, to: destinationURL)
-            DDLogInfo("OptionView: 已复制日志到 \(destinationURL.lastPathComponent)", ddlog: .sharedInstance)
-            shareURL = destinationURL
-            isSharePresented = true
-        } catch {
-            DDLogError("OptionView: 导出日志失败 \(error)", ddlog: .sharedInstance)
-        }
+        DDLogInfo("OptionView: 展示最新日志 \(latestURL.lastPathComponent)", ddlog: .sharedInstance)
+        latestLogURL = latestURL
+        isLogsPresented = true
     }
 }
 
-// MARK: - 摇一摇探测器与分享封装
+// MARK: - 摇一摇探测器封装
 
 private extension Notification.Name {
     static let deviceDidShakeNotification = Notification.Name("deviceDidShakeNotification")
@@ -565,12 +543,4 @@ private final class ShakeDetectorView: UIView {
 private struct ShakeDetectorRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> ShakeDetectorView { ShakeDetectorView() }
     func updateUIView(_ uiView: ShakeDetectorView, context: Context) {}
-}
-
-private struct ActivityView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
