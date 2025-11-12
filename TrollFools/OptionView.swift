@@ -508,13 +508,79 @@ struct OptionView: View {
     // 展示最新日志
     @MainActor
     private func presentLatestLogSheet() async {
-        guard let latestURL = InjectorV3.main.latestLogFileURL else {
+        guard let latestURL = latestLogFileURLForCurrentApp() else {
             DDLogWarn("OptionView: 未找到最新日志文件", ddlog: .sharedInstance)
             return
         }
         DDLogInfo("OptionView: 展示最新日志 \(latestURL.lastPathComponent)", ddlog: .sharedInstance)
         latestLogURL = latestURL
         isLogsPresented = true
+    }
+
+    private func latestLogFileURLForCurrentApp() -> URL? {
+        let fileManager = FileManager.default
+        guard let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+
+        let rootDirectory = cachesDirectory
+            .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
+            .appendingPathComponent("InjectorV3", isDirectory: true)
+
+        guard fileManager.fileExists(atPath: rootDirectory.path),
+              let tempDirectories = try? fileManager.contentsOfDirectory(
+                  at: rootDirectory,
+                  includingPropertiesForKeys: [.isDirectoryKey],
+                  options: [.skipsHiddenFiles]
+              ) else {
+            return nil
+        }
+
+        var latestURL: URL?
+        var latestDate: Date?
+
+        for tempDirectory in tempDirectories {
+            guard let directoryValues = try? tempDirectory.resourceValues(forKeys: [.isDirectoryKey]),
+                  directoryValues.isDirectory == true else {
+                continue
+            }
+
+            let logsDirectory = tempDirectory
+                .appendingPathComponent("Logs", isDirectory: true)
+                .appendingPathComponent(app.id, isDirectory: true)
+
+            guard let enumerator = fileManager.enumerator(
+                at: logsDirectory,
+                includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey],
+                options: [.skipsHiddenFiles]
+            ) else {
+                continue
+            }
+
+            for case let fileURL as URL in enumerator {
+                guard let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey]),
+                      resourceValues.isRegularFile == true else {
+                    continue
+                }
+
+                let candidateDate = resourceValues.creationDate ?? resourceValues.contentModificationDate
+                guard let candidateDate else {
+                    continue
+                }
+
+                if let currentLatestDate = latestDate {
+                    if candidateDate > currentLatestDate {
+                        latestDate = candidateDate
+                        latestURL = fileURL
+                    }
+                } else {
+                    latestDate = candidateDate
+                    latestURL = fileURL
+                }
+            }
+        }
+
+        return latestURL
     }
 }
 
