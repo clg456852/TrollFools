@@ -523,40 +523,73 @@ struct OptionView: View {
             return nil
         }
 
+        var latestURL: URL?
+        var latestDate: Date?
+
+        // 查找 InjectorV3/Logs 目录下的日志（注入过程的日志）
         let rootDirectory = cachesDirectory
             .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
             .appendingPathComponent("InjectorV3", isDirectory: true)
 
-        guard fileManager.fileExists(atPath: rootDirectory.path),
-              let tempDirectories = try? fileManager.contentsOfDirectory(
-                  at: rootDirectory,
-                  includingPropertiesForKeys: [.isDirectoryKey],
-                  options: [.skipsHiddenFiles]
-              ) else {
-            return nil
+        if fileManager.fileExists(atPath: rootDirectory.path),
+           let tempDirectories = try? fileManager.contentsOfDirectory(
+               at: rootDirectory,
+               includingPropertiesForKeys: [.isDirectoryKey],
+               options: [.skipsHiddenFiles]
+           ) {
+            for tempDirectory in tempDirectories {
+                guard let directoryValues = try? tempDirectory.resourceValues(forKeys: [.isDirectoryKey]),
+                      directoryValues.isDirectory == true else {
+                    continue
+                }
+
+                let logsDirectory = tempDirectory
+                    .appendingPathComponent("Logs", isDirectory: true)
+                    .appendingPathComponent(app.id, isDirectory: true)
+
+                guard let enumerator = fileManager.enumerator(
+                    at: logsDirectory,
+                    includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey],
+                    options: [.skipsHiddenFiles]
+                ) else {
+                    continue
+                }
+
+                for case let fileURL as URL in enumerator {
+                    guard let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey]),
+                          resourceValues.isRegularFile == true else {
+                        continue
+                    }
+
+                    let candidateDate = resourceValues.creationDate ?? resourceValues.contentModificationDate
+                    guard let candidateDate else {
+                        continue
+                    }
+
+                    if let currentLatestDate = latestDate {
+                        if candidateDate > currentLatestDate {
+                            latestDate = candidateDate
+                            latestURL = fileURL
+                        }
+                    } else {
+                        latestDate = candidateDate
+                        latestURL = fileURL
+                    }
+                }
+            }
         }
 
-        var latestURL: URL?
-        var latestDate: Date?
+        // 查找 SharedLogs 目录下的日志（应用本身的日志，包括 OptionView 的日志）
+        let sharedLogsDirectory = cachesDirectory
+            .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
+            .appendingPathComponent("SharedLogs", isDirectory: true)
 
-        for tempDirectory in tempDirectories {
-            guard let directoryValues = try? tempDirectory.resourceValues(forKeys: [.isDirectoryKey]),
-                  directoryValues.isDirectory == true else {
-                continue
-            }
-
-            let logsDirectory = tempDirectory
-                .appendingPathComponent("Logs", isDirectory: true)
-                .appendingPathComponent(app.id, isDirectory: true)
-
-            guard let enumerator = fileManager.enumerator(
-                at: logsDirectory,
-                includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey],
-                options: [.skipsHiddenFiles]
-            ) else {
-                continue
-            }
-
+        if fileManager.fileExists(atPath: sharedLogsDirectory.path),
+           let enumerator = fileManager.enumerator(
+               at: sharedLogsDirectory,
+               includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey],
+               options: [.skipsHiddenFiles]
+           ) {
             for case let fileURL as URL in enumerator {
                 guard let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey]),
                       resourceValues.isRegularFile == true else {

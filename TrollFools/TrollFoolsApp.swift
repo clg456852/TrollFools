@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CocoaLumberjackSwift
 
 @main
 struct TrollFoolsApp: SwiftUI.App {
@@ -14,6 +15,7 @@ struct TrollFoolsApp: SwiftUI.App {
     var isDisclaimerHidden: Bool = false
 
     init() {
+        Self.configureSharedLogger()
         try? FileManager.default.removeItem(at: InjectorV3.temporaryRoot)
     }
 
@@ -31,5 +33,37 @@ struct TrollFoolsApp: SwiftUI.App {
             }
             .animation(.easeInOut, value: isDisclaimerHidden)
         }
+    }
+
+    private static var didConfigureLogger = false
+
+    private static func configureSharedLogger() {
+        guard !didConfigureLogger else { return }
+        didConfigureLogger = true
+
+        let fileLogger: DDFileLogger? = {
+            guard let cachesDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+                return nil
+            }
+
+            let logsDirectory = cachesDirectory
+                .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
+                .appendingPathComponent("SharedLogs", isDirectory: true)
+
+            try? FileManager.default.createDirectory(at: logsDirectory, withIntermediateDirectories: true)
+
+            let fileManager = DDLogFileManagerDefault(logsDirectory: logsDirectory.path)
+            let logger = DDFileLogger(logFileManager: fileManager)
+            logger.rollingFrequency = 60 * 60 * 24
+            logger.logFileManager.maximumNumberOfLogFiles = 7
+            logger.doNotReuseLogFiles = true
+            return logger
+        }()
+
+        if let fileLogger {
+            DDLog.add(fileLogger)
+        }
+
+        DDLog.add(DDOSLogger.sharedInstance)
     }
 }
