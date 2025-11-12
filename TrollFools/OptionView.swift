@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import UIKit
+import CocoaLumberjackSwift
 
 struct OptionView: View {
     let app: App
@@ -90,8 +92,10 @@ struct OptionView: View {
                 Button {
                     Task {
                         do {
+                            DDLogInfo("OptionView: 开始尝试使用本地文件注入", ddlog: InjectorV3.main.logger)
                             try await downloadAndInject()
                         } catch {
+                            DDLogError("OptionView: 注入流程发生错误 \(error)", ddlog: InjectorV3.main.logger)
                             await MainActor.run {
                                 importerResult = .failure(error)
                                 isImporterSelected = true
@@ -148,7 +152,7 @@ struct OptionView: View {
                     }
                 }
             } label: {
-                Label("下载新文件", systemImage: "arrow.down.circle")
+                Label("下载正式版", systemImage: "arrow.down.circle")
             }
             .disabled(isDownloading) // 下载时禁用按钮
             
@@ -187,7 +191,7 @@ struct OptionView: View {
                     }
                 }
             } label: {
-                Label("pre", systemImage: "testtube.2")
+                Label("下载预发版", systemImage: "testtube.2")
             }
             .disabled(isDownloading) // 下载时禁用按钮
             
@@ -219,7 +223,7 @@ struct OptionView: View {
                     }
                 }
             } label: {
-                Label("debug", systemImage: "ladybug")
+                Label("下载调试版", systemImage: "ladybug")
             }
             .disabled(isDownloading) // 下载时禁用按钮
         }
@@ -232,6 +236,12 @@ struct OptionView: View {
             // 清理任务，避免内存泄漏
             checkFileStatusTask?.cancel()
             checkFileStatusTask = nil
+        }
+        // 摇一摇导出日志监控
+        .onReceive(NotificationCenter.default.publisher(for: .deviceDidShakeNotification)) { _ in
+            Task {
+                await exportLatestLogAndPresentShare()
+            }
         }
         .background(Group {
             NavigationLink(isActive: $isImporterSelected) {
@@ -258,6 +268,14 @@ struct OptionView: View {
                 SettingsView(app)
             }
         }
+        // 分享面板
+        .sheet(isPresented: $isSharePresented) {
+            if let shareURL {
+                ActivityView(activityItems: [shareURL])
+            }
+        }
+        // 注入隐藏摇一摇探测器
+        .background(ShakeDetectorRepresentable())
         .overlay {
             if isDownloading {
                 ZStack {
@@ -310,7 +328,13 @@ struct OptionView: View {
             try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         }
         
+        DDLogInfo("OptionView.downloadFile: 请求地址 \(url.absoluteString)", ddlog: InjectorV3.main.logger)
         let (byteStream, response) = try await URLSession.shared.bytes(from: url)
+        if let httpResp = response as? HTTPURLResponse {
+            let lm = httpResp.value(forHTTPHeaderField: "Last-Modified") ?? "nil"
+            let etag = httpResp.value(forHTTPHeaderField: "ETag") ?? "nil"
+            DDLogInfo("OptionView.downloadFile: 状态=\(httpResp.statusCode) 内容长度=\(response.expectedContentLength) Last-Modified=\(lm) ETag=\(etag)", ddlog: InjectorV3.main.logger)
+        }
         
         // 解析 Last-Modified
         var lastModifiedDate: Date? = nil
@@ -356,6 +380,7 @@ struct OptionView: View {
         }
         
         try data.write(to: fileURL, options: .atomic)
+        DDLogInfo("OptionView.downloadFile: 已写入文件 \(fileURL.lastPathComponent) 大小=\(data.count) 字节", ddlog: InjectorV3.main.logger)
         
         // 如果有 lastModifiedDate，将其设置为文件的创建时间
         if let lastModifiedDate = lastModifiedDate {
@@ -368,8 +393,17 @@ struct OptionView: View {
             do {
                 try FileManager.default.setAttributes(attributes, ofItemAtPath: fileURL.path)
             } catch {
-                print("Failed to set file attributes: \(error)")
+                DDLogWarn("OptionView.downloadFile: 设置文件属性失败 \(error)", ddlog: InjectorV3.main.logger)
             }
+        } else {
+            DDLogWarn("OptionView.downloadFile: 服务端未提供 Last-Modified，改用系统时间戳", ddlog: InjectorV3.main.logger)
+        }
+        
+        if let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path) {
+            let size = (attrs[.size] as? NSNumber)?.int64Value ?? -1
+            let cdate = (attrs[.creationDate] as? Date)?.description ?? "nil"
+            let mdate = (attrs[.modificationDate] as? Date)?.description ?? "nil"
+            DDLogInfo("OptionView.downloadFile: 最终文件信息 size=\(size) 创建时间=\(cdate) 修改时间=\(mdate)", ddlog: InjectorV3.main.logger)
         }
         
         return lastModifiedDate
@@ -386,12 +420,18 @@ struct OptionView: View {
         // 检查本地文件是否存在
         if fileManager.fileExists(atPath: fileURL.path) {
             let selectedUrls = [fileURL]
+            if let attrs = try? fileManager.attributesOfItem(atPath: fileURL.path) {
+                let cdate = (attrs[.creationDate] as? Date)?.description ?? "nil"
+                let mdate = (attrs[.modificationDate] as? Date)?.description ?? "nil"
+                DDLogInfo("OptionView: 使用本地文件注入 创建时间=\(cdate) 修改时间=\(mdate)", ddlog: InjectorV3.main.logger)
+            }
             await MainActor.run {
                 importerResult = .success(selectedUrls)
                 isImporterSelected = true
             }
         } else {
             // 如果本地文件不存在，则弹窗
+            DDLogWarn("OptionView: 本地不存在 injection.dylib，无法注入", ddlog: InjectorV3.main.logger)
             await MainActor.run {
                 isNoFileAlertPresented = true
             }
@@ -427,25 +467,30 @@ struct OptionView: View {
                             await MainActor.run {
                                 fileStatusText = "文件版本: \(formatter.string(from: creationDate)) | 大小: \(sizeString)"
                             }
+                            DDLogInfo("OptionView.checkFileStatus: 文件存在 size=\(fileSize)B 创建时间=\(creationDate) 修改时间=\(attrs[.modificationDate] as? Date as Any)", ddlog: InjectorV3.main.logger)
                         } else {
                             await MainActor.run {
                                 fileStatusText = "文件版本: \(formatter.string(from: creationDate)) | 大小: 未知"
                             }
+                            DDLogWarn("OptionView.checkFileStatus: 文件存在但无法获取大小", ddlog: InjectorV3.main.logger)
                         }
                     } else {
                         await MainActor.run {
                             fileStatusText = "文件存在，但无法获取创建时间"
                         }
+                        DDLogWarn("OptionView.checkFileStatus: 文件存在但无法读取创建时间", ddlog: InjectorV3.main.logger)
                     }
                 } catch {
                     await MainActor.run {
                         fileStatusText = "无法读取文件属性"
                     }
+                    DDLogError("OptionView.checkFileStatus: 读取文件属性失败 \(error)", ddlog: InjectorV3.main.logger)
                 }
             } else {
                 await MainActor.run {
                     fileStatusText = "无文件，需下载"
                 }
+                DDLogInfo("OptionView.checkFileStatus: 未找到本地文件", ddlog: InjectorV3.main.logger)
             }
         }
     }
@@ -455,4 +500,77 @@ struct OptionView: View {
     @State private var downloadTitle: String = NSLocalizedString("Downloading…", comment: "")
     @State private var fileStatusText: String = "检查中..."
     @State private var checkFileStatusTask: Task<Void, Never>?
+    
+    // 分享相关状态
+    @State private var isSharePresented = false
+    @State private var shareURL: URL?
+
+    // 导出最新日志到 Documents 并弹出分享
+    @MainActor
+    private func exportLatestLogAndPresentShare() async {
+        guard let latestURL = InjectorV3.main.latestLogFileURL else {
+            DDLogWarn("OptionView: 未找到最新日志文件", ddlog: InjectorV3.main.logger)
+            return
+        }
+        do {
+            let fileManager = FileManager.default
+            let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let exportDirectoryURL = documentsURL.appendingPathComponent("TrollFoolsLogs", isDirectory: true)
+
+            if !fileManager.fileExists(atPath: exportDirectoryURL.path) {
+                try fileManager.createDirectory(at: exportDirectoryURL, withIntermediateDirectories: true)
+            } else {
+                let existingFiles = try fileManager.contentsOfDirectory(at: exportDirectoryURL, includingPropertiesForKeys: nil)
+                for file in existingFiles {
+                    try? fileManager.removeItem(at: file)
+                }
+            }
+
+            let destinationURL = exportDirectoryURL.appendingPathComponent(latestURL.lastPathComponent)
+            if fileManager.fileExists(atPath: destinationURL.path) {
+                try? fileManager.removeItem(at: destinationURL)
+            }
+            try fileManager.copyItem(at: latestURL, to: destinationURL)
+            DDLogInfo("OptionView: 已复制日志到 \(destinationURL.lastPathComponent)", ddlog: InjectorV3.main.logger)
+            shareURL = destinationURL
+            isSharePresented = true
+        } catch {
+            DDLogError("OptionView: 导出日志失败 \(error)", ddlog: InjectorV3.main.logger)
+        }
+    }
+}
+
+// MARK: - 摇一摇探测器与分享封装
+
+private extension Notification.Name {
+    static let deviceDidShakeNotification = Notification.Name("deviceDidShakeNotification")
+}
+
+private final class ShakeDetectorView: UIView {
+    override var canBecomeFirstResponder: Bool { true }
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        DispatchQueue.main.async { [weak self] in
+            _ = self?.becomeFirstResponder()
+        }
+    }
+    override func motionEnded(_ motion: UIEvent.EventSubtype, with event: UIEvent?) {
+        if motion == .motionShake {
+            NotificationCenter.default.post(name: .deviceDidShakeNotification, object: nil)
+        }
+        super.motionEnded(motion, with: event)
+    }
+}
+
+private struct ShakeDetectorRepresentable: UIViewRepresentable {
+    func makeUIView(context: Context) -> ShakeDetectorView { ShakeDetectorView() }
+    func updateUIView(_ uiView: ShakeDetectorView, context: Context) {}
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
