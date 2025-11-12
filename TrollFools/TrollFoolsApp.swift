@@ -57,7 +57,6 @@ struct TrollFoolsApp: SwiftUI.App {
             logger.rollingFrequency = 60 * 60 * 24
             logger.logFileManager.maximumNumberOfLogFiles = 7
             logger.doNotReuseLogFiles = true
-            logger.logFormatter = ChinaTimeZoneLogFormatter.shared
             return logger
         }()
 
@@ -65,7 +64,6 @@ struct TrollFoolsApp: SwiftUI.App {
             DDLog.add(fileLogger)
         }
 
-        DDOSLogger.sharedInstance.logFormatter = ChinaTimeZoneLogFormatter.shared
         DDLog.add(DDOSLogger.sharedInstance)
     }
 }

@@ -343,7 +343,7 @@ struct OptionView: View {
             let rfcFmt = DateFormatter()
             rfcFmt.locale = Locale(identifier: "en_US_POSIX")
             rfcFmt.dateFormat = "E, dd MMM yyyy HH:mm:ss z"
-            rfcFmt.timeZone = TimeZone.trollFoolsChina
+            rfcFmt.timeZone = TimeZone(abbreviation: "GMT")
             lastModifiedDate = rfcFmt.date(from: lmStr)
         }
         
@@ -459,7 +459,7 @@ struct OptionView: View {
                         let formatter = DateFormatter()
                         formatter.dateStyle = .medium
                         formatter.timeStyle = .short
-                        formatter.timeZone = TimeZone.trollFoolsChina
+                        formatter.timeZone = TimeZone(identifier: "Asia/Shanghai")
                         
                         if let fileSize = attrs[.size] as? Int64 {
                             let sizeInKB = Double(fileSize) / 1024

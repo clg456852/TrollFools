@@ -81,12 +81,10 @@ final class InjectorV3 {
             fileLogger.rollingFrequency = 60 * 60 * 24
             fileLogger.logFileManager.maximumNumberOfLogFiles = 7
             fileLogger.doNotReuseLogFiles = true
-            fileLogger.logFormatter = ChinaTimeZoneLogFormatter.shared
 
             logger.add(fileLogger)
         }
 
-        DDOSLogger.sharedInstance.logFormatter = ChinaTimeZoneLogFormatter.shared
         logger.add(DDOSLogger.sharedInstance)
 
         DDLogWarn("Logger setup \(appID!)", asynchronous: false, ddlog: logger)
