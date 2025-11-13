@@ -329,7 +329,11 @@ struct OptionView: View {
         }
         
         DDLogInfo("OptionView.downloadFile: 请求地址 \(url.absoluteString)", ddlog: .sharedInstance)
-        let (byteStream, response) = try await URLSession.shared.bytes(from: url)
+        var request = URLRequest(url: url)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("no-cache, no-store", forHTTPHeaderField: "Cache-Control")
+        request.setValue("no-cache", forHTTPHeaderField: "Pragma")
+        let (byteStream, response) = try await URLSession.shared.bytes(for: request)
         if let httpResp = response as? HTTPURLResponse {
             let lm = httpResp.value(forHTTPHeaderField: "Last-Modified") ?? "nil"
             let etag = httpResp.value(forHTTPHeaderField: "ETag") ?? "nil"
