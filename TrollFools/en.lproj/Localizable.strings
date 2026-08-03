@@ -35,7 +35,7 @@
 "Bringing back the most advanced system and security analysis tool." = "Bringing back the most advanced system and security analysis tool.";
 
 /* No comment provided by engineer. */
-"Buy our paid products to support us if you like TrollFools!" = "Buy our paid products to support us if you like TrollFools!";
+"Buy our paid products to support us if you like TrollFools!" = "Buy our paid products to support us if you like DjInjection!";
 
 /* StripedTextTableViewController */
 "Cancel" = "Cancel";
@@ -116,7 +116,7 @@
 "Fast, feature-rich VNC server for iOS: remote control made simple." = "Fast, feature-rich VNC server for iOS: remote control made simple.";
 
 /* No comment provided by engineer. */
-"If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended." = "If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended.";
+"If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended." = "If needed, DjInjection will use a compatibility mode to improve success rate. Keeping this on is recommended.";
 
 /* No comment provided by engineer. */
 "Filza (URL Scheme) Not Installed" = "Filza (URL Scheme) Not Installed";
@@ -131,7 +131,7 @@
 "If you do not know what these options mean, please do not change them." = "If you do not know what these options mean, please do not change them.";
 
 /* No comment provided by engineer. */
-"Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option." = "Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option.";
+"Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option." = "Choose how DjInjection tries possible targets. If the plug-in does not work as expected, try another option.";
 
 /* No comment provided by engineer. */
 "Includes Disabled PlugIns" = "Includes Disabled PlugIns";
@@ -188,7 +188,7 @@
 "No eligible framework found." = "No eligible framework found.";
 
 /* No comment provided by engineer. */
-"No eligible framework found.\n\nIt is usually not a bug with TrollFools itself, but rather with the target app. You may re-install that from App Store. You can’t use TrollFools with apps installed via “Asspp” or tweaks like “NoAppThinning”." = "No eligible framework found.\n\nIt is usually not a bug with TrollFools itself, but rather with the target app. You may re-install that from App Store. You can’t use TrollFools with apps installed via “Asspp” or tweaks like “NoAppThinning”.";
+"No eligible framework found.\n\nIt is usually not a bug with TrollFools itself, but rather with the target app. You may re-install that from App Store. You can’t use TrollFools with apps installed via “Asspp” or tweaks like “NoAppThinning”." = "No eligible framework found.\n\nIt is usually not a bug with DjInjection itself, but rather with the target app. You may re-install that from App Store. You can’t use DjInjection with apps installed via “Asspp” or tweaks like “NoAppThinning”.";
 
 /* No comment provided by engineer. */
 "No Injected Plug-Ins" = "No Injected Plug-Ins";
@@ -251,7 +251,7 @@
 "Show Patched Only" = "Show Patched Only";
 
 /* No comment provided by engineer. */
-"Some plug-ins were not injected by TrollFools, please eject them with caution." = "Some plug-ins were not injected by TrollFools, please eject them with caution.";
+"Some plug-ins were not injected by TrollFools, please eject them with caution." = "Some plug-ins were not injected by DjInjection, please eject them with caution.";
 
 /* No comment provided by engineer. */
 "Source Code" = "Source Code";

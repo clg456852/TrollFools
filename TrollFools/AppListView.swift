@@ -42,7 +42,10 @@ struct AppListView: View {
     }
 
     var appString: String {
-        let appNameString = Bundle.main.infoDictionary?["CFBundleName"] as? String ?? "DjInjection"
+        let appNameString =
+            (Bundle.main.localizedInfoDictionary?["CFBundleDisplayName"] as? String) ??
+            (Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String) ??
+            "DjInjection"
         let appVersionString = String(
             format: "v%@ (%@)",
             Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0",

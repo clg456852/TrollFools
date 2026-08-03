@@ -116,7 +116,7 @@
 "Fast, feature-rich VNC server for iOS: remote control made simple." = "功能强大的 iOS VNC 服务器：远程控制，从未如此简单。";
 
 /* No comment provided by engineer. */
-"If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended." = "当常规方式效果不稳定时，TrollFools 会自动尝试兼容模式以提高成功率。建议保持开启。";
+"If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended." = "当常规方式效果不稳定时，DjInjection 会自动尝试兼容模式以提高成功率。建议保持开启。";
 
 /* No comment provided by engineer. */
 "Filza (URL Scheme) Not Installed" = "未安装支持 URL Scheme 的 Filza";
@@ -131,7 +131,7 @@
 "If you do not know what these options mean, please do not change them." = "如果你不知道这些选项的含义，请不要更改。";
 
 /* No comment provided by engineer. */
-"Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option." = "选择 TrollFools 尝试注入目标的方式。如果插件没有按预期工作，可以切换到其他选项再试。";
+"Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option." = "选择 DjInjection 尝试注入目标的方式。如果插件没有按预期工作，可以切换到其他选项再试。";
 
 /* No comment provided by engineer. */
 "Includes Disabled PlugIns" = "包含已禁用的插件";
@@ -188,7 +188,7 @@
 "No eligible framework found." = "没有找到符合条件的框架。";
 
 /* No comment provided by engineer. */
-"No eligible framework found.\n\nIt is usually not a bug with TrollFools itself, but rather with the target app. You may re-install that from App Store. You can’t use TrollFools with apps installed via “Asspp” or tweaks like “NoAppThinning”." = "没有找到符合条件的框架。\n\n通常情况下，这不是 TrollFools 自身的问题，而是目标应用程序的问题。你可能需要从 App Store 重新安装该应用。你不能在通过 “爱啪思道” 或 “NoAppThinning” 等方式安装的应用程序上使用 TrollFools。";
+"No eligible framework found.\n\nIt is usually not a bug with TrollFools itself, but rather with the target app. You may re-install that from App Store. You can’t use TrollFools with apps installed via “Asspp” or tweaks like “NoAppThinning”." = "没有找到符合条件的框架。\n\n通常情况下，这不是 DjInjection 自身的问题，而是目标应用程序的问题。你可能需要从 App Store 重新安装该应用。你不能在通过 “爱啪思道” 或 “NoAppThinning” 等方式安装的应用程序上使用 DjInjection。";
 
 /* No comment provided by engineer. */
 "No Injected Plug-Ins" = "没有已注入的插件";
@@ -251,7 +251,7 @@
 "Show Patched Only" = "仅显示已注入的";
 
 /* No comment provided by engineer. */
-"Some plug-ins were not injected by TrollFools, please eject them with caution." = "部分插件可能并非由 TrollFools 注入，移除它们可能会造成应用程序异常，请谨慎操作。";
+"Some plug-ins were not injected by TrollFools, please eject them with caution." = "部分插件可能并非由 DjInjection 注入，移除它们可能会造成应用程序异常，请谨慎操作。";
 
 /* No comment provided by engineer. */
 "Source Code" = "获取源代码";
