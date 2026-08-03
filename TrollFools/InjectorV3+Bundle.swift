@@ -43,9 +43,14 @@ extension InjectorV3 {
         precondition(isMachO(executableURL), "Not a Mach-O: \(executableURL.path)")
 
         let frameworksURL = target.appendingPathComponent("Frameworks")
-        let linkedDylibs = try linkedDylibsRecursivelyOfMachO(executableURL)
+        let frameworksExist = FileManager.default.fileExists(atPath: frameworksURL.path)
 
-        var enumeratedURLs = OrderedSet<URL>()
+        DDLogInfo("Scanning Mach-Os in \(target.lastPathComponent), Frameworks exists: \(frameworksExist)", ddlog: logger)
+
+        let linkedDylibs = try linkedDylibsRecursivelyOfMachO(executableURL)
+        DDLogInfo("Linked dylibs (\(linkedDylibs.count)): \(linkedDylibs.map { $0.lastPathComponent })", ddlog: logger)
+
+        var enumeratedMachOs = OrderedSet<URL>()
         if let enumerator = FileManager.default.enumerator(
             at: frameworksURL,
             includingPropertiesForKeys: [.fileSizeKey],
@@ -56,13 +61,88 @@ extension InjectorV3 {
                     enumerator.skipDescendants()
                     continue
                 }
-                if enumerator.level == 2 {
-                    enumeratedURLs.append(itemURL)
+
+                // Skip backup files created before injection
+                if itemURL.path.hasSuffix(".\(Self.alternateSuffix)") {
+                    continue
+                }
+
+                let itemExt = itemURL.pathExtension.lowercased()
+                if enumerator.level == 2 && (itemExt.isEmpty || itemExt == "dylib") && isMachO(itemURL) {
+                    enumeratedMachOs.append(itemURL)
+                    continue
+                }
+
+                // Scan bare dylibs at level 1 (directly in Frameworks/)
+                if enumerator.level == 1 && itemExt == "dylib" && isMachO(itemURL) {
+                    enumeratedMachOs.append(itemURL)
+                    continue
                 }
             }
         }
 
-        let machOs = linkedDylibs.intersection(enumeratedURLs)
+        DDLogInfo("Enumerated \(enumeratedMachOs.count) items", ddlog: logger)
+
+        var machOs = linkedDylibs.intersection(enumeratedMachOs)
+        DDLogInfo("Intersection: \(machOs.count) linked Mach-Os in Frameworks/", ddlog: logger)
+
+        // Fallback: if none of the Mach-Os in Frameworks/ are statically linked
+        // by the main binary (e.g. Unity apps use dlopen), use all available Mach-Os.
+        if machOs.isEmpty && !enumeratedMachOs.isEmpty {
+            if useFrameworkEnumerationFallback {
+                didUseMachOEnumerationFallback = true
+
+                var excludedSwiftRuntimeCount = 0
+                var excludedIgnoredNameCount = 0
+                let filteredMachOs = enumeratedMachOs.filter { url in
+                    let nameLower = url.lastPathComponent.lowercased()
+                    if nameLower.hasPrefix("libswift") {
+                        excludedSwiftRuntimeCount += 1
+                        return false
+                    }
+                    if Self.ignoredDylibAndFrameworkNames.contains(nameLower) {
+                        excludedIgnoredNameCount += 1
+                        return false
+                    }
+                    return true
+                }
+
+                let excludedCount = enumeratedMachOs.count - filteredMachOs.count
+                DDLogWarn(
+                    "No statically linked Mach-Os found, falling back to \(filteredMachOs.count) filtered Mach-Os in Frameworks/ (excluded \(excludedCount): \(excludedSwiftRuntimeCount) Swift runtime, \(excludedIgnoredNameCount) ignored by name)",
+                    ddlog: logger
+                )
+
+                machOs = OrderedSet(filteredMachOs)
+            } else {
+                DDLogWarn("No statically linked Mach-Os found, fallback is disabled by settings", ddlog: logger)
+            }
+        }
+
+        // Filter out previously-injected Mach-Os by diffing current vs. backup load commands.
+        // Any load command present in the current binary but absent from its backup was added by injection.
+        var injectedAssetNames = Set<String>()
+        for machO in (enumeratedMachOs.elements + [executableURL]) where hasAlternate(machO) {
+            if let current = try? loadedDylibsOfMachO(machO),
+               let original = try? loadedDylibsOfMachO(Self.alternateURL(for: machO))
+            {
+                for name in current where !original.contains(name) {
+                    injectedAssetNames.insert(URL(fileURLWithPath: name).lastPathComponent)
+                }
+            }
+        }
+        if !injectedAssetNames.isEmpty {
+            let preFilterCount = machOs.count
+            machOs = machOs.filter { !injectedAssetNames.contains($0.lastPathComponent) }
+            let excludedCount = preFilterCount - machOs.count
+            if excludedCount > 0 {
+                DDLogInfo(
+                    "Excluded \(excludedCount) previously-injected Mach-Os by backup diff: \(injectedAssetNames.sorted())",
+                    ddlog: logger
+                )
+            }
+        }
+
         var sortedMachOs: [URL] =
             switch injectStrategy {
         case .lexicographic:
@@ -102,7 +182,7 @@ extension InjectorV3 {
             .sorted(by: { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending })
     }
 
-    func injectedBundleURLsInBundle(_ target: URL) -> [URL] {
+    fileprivate func injectedBundleURLsInBundle(_ target: URL) -> [URL] {
         precondition(checkIsBundle(target), "Not a bundle: \(target.path)")
 
         guard let bundleContentURLs = try? FileManager.default.contentsOfDirectory(at: target, includingPropertiesForKeys: [.isDirectoryKey]) else {
@@ -125,7 +205,7 @@ extension InjectorV3 {
         return bundleURLs
     }
 
-    func injectedDylibAndFrameworkURLsInBundle(_ target: URL) -> [URL] {
+    fileprivate func injectedDylibAndFrameworkURLsInBundle(_ target: URL) -> [URL] {
         precondition(checkIsBundle(target), "Not a bundle: \(target.path)")
 
         let frameworksURL = target.appendingPathComponent("Frameworks")

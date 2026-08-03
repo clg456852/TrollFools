@@ -5,6 +5,7 @@
 //  Created by 82Flex on 2024/10/30.
 //
 
+import notify
 import Combine
 import OrderedCollections
 import SwiftUI
@@ -43,6 +44,7 @@ final class AppListModel: ObservableObject {
         }
     }
 
+    static let isLegacyDevice: Bool = { UIScreen.main.fixedCoordinateSpace.bounds.height <= 736.0 }()
     static let hasTrollStore: Bool = { LSApplicationProxy(forIdentifier: "com.opa334.TrollStore") != nil }()
     private var _allApplications: [App] = []
 
@@ -53,16 +55,22 @@ final class AppListModel: ObservableObject {
     @Published var activeScope: Scope = .all
     @Published var activeScopeApps: OrderedDictionary<String, [App]> = [:]
 
-    @Published var isPaidProductInstalled: Bool = false
     @Published var unsupportedCount: Int = 0
 
-    @Published var isFilzaInstalled: Bool = false
-    private let filzaURL = URL(string: "filza://")
+    lazy var isFilzaInstalled: Bool = {
+        if let filzaURL {
+            UIApplication.shared.canOpenURL(filzaURL)
+        } else {
+            false
+        }
+    }()
+    private let filzaURL = URL(string: "filza://view")
 
     @Published var isRebuildNeeded: Bool = false
 
     private let applicationChanged = PassthroughSubject<Void, Never>()
     private var cancellables = Set<AnyCancellable>()
+    private var darwinNotifyToken: Int32 = NOTIFY_TOKEN_INVALID
 
     init(selectorURL: URL? = nil) {
         self.selectorURL = selectorURL
@@ -85,29 +93,25 @@ final class AppListModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
-        CFNotificationCenterAddObserver(darwinCenter, Unmanaged.passRetained(self).toOpaque(), { _, observer, _, _, _ in
-            guard let observer = Unmanaged<AppListModel>.fromOpaque(observer!).takeUnretainedValue() as AppListModel? else {
-                return
-            }
-            observer.applicationChanged.send()
-        }, "com.apple.LaunchServices.ApplicationsChanged" as CFString, nil, .coalesce)
+        // Uses notify_register_dispatch instead of CFNotificationCenterAddObserver to avoid
+        // Unmanaged pointer management. Unlike CFNotificationCenterAddObserver with .coalesce,
+        // notify_register_dispatch may deliver queued notifications individually upon app resume,
+        // but the .throttle(for: 0.5, ...) on applicationChanged already coalesces rapid bursts.
+        notify_register_dispatch("com.apple.LaunchServices.ApplicationsChanged", &darwinNotifyToken, .main) { [weak self] _ in
+            self?.applicationChanged.send()
+        }
     }
 
     deinit {
-        let darwinCenter = CFNotificationCenterGetDarwinNotifyCenter()
-        CFNotificationCenterRemoveObserver(darwinCenter, Unmanaged.passUnretained(self).toOpaque(), nil, nil)
+        if darwinNotifyToken != NOTIFY_TOKEN_INVALID {
+            notify_cancel(darwinNotifyToken)
+        }
     }
 
     func reload() {
-        let allApplications = Self.fetchApplications(&isPaidProductInstalled, &unsupportedCount)
+        let allApplications = Self.fetchApplications(&unsupportedCount)
         allApplications.forEach { $0.appList = self }
         _allApplications = allApplications
-        if let filzaURL {
-            isFilzaInstalled = UIApplication.shared.canOpenURL(filzaURL)
-        } else {
-            isFilzaInstalled = false
-        }
         performFilter()
     }
 
@@ -116,7 +120,7 @@ final class AppListModel: ObservableObject {
 
         if !filter.searchKeyword.isEmpty {
             filteredApplications = filteredApplications.filter {
-                $0.name.localizedCaseInsensitiveContains(filter.searchKeyword) || $0.id.localizedCaseInsensitiveContains(filter.searchKeyword) ||
+                $0.name.localizedCaseInsensitiveContains(filter.searchKeyword) || $0.bid.localizedCaseInsensitiveContains(filter.searchKeyword) ||
                     (
                         $0.latinName.localizedCaseInsensitiveContains(
                             filter.searchKeyword
@@ -127,7 +131,7 @@ final class AppListModel: ObservableObject {
         }
 
         if filter.showPatchedOnly {
-            filteredApplications = filteredApplications.filter { $0.isInjected }
+            filteredApplications = filteredApplications.filter { $0.isInjected || $0.hasPersistedAssets }
         }
 
         switch activeScope {
@@ -148,7 +152,7 @@ final class AppListModel: ObservableObject {
         "xyz.willy.Zebra",
     ]
 
-    private static func fetchApplications(_ isPaidProductInstalled: inout Bool, _ unsupportedCount: inout Int) -> [App] {
+    private static func fetchApplications(_ unsupportedCount: inout Int) -> [App] {
         let allApps: [App] = LSApplicationWorkspace.default()
             .allApplications()
             .compactMap { proxy in
@@ -161,11 +165,7 @@ final class AppListModel: ObservableObject {
                     return nil
                 }
 
-                if id == "wiki.qaq.trapp" || id == "com.82flex.reveil" {
-                    isPaidProductInstalled = true
-                }
-
-                guard !id.hasPrefix("wiki.qaq.") && !id.hasPrefix("com.82flex.") else {
+                guard !id.hasPrefix("wiki.qaq.") && !id.hasPrefix("com.82flex.") && !id.hasPrefix("ch.xxtou.") else {
                     return nil
                 }
 
@@ -175,7 +175,7 @@ final class AppListModel: ObservableObject {
 
                 let shortVersionString: String? = proxy.shortVersionString()
                 let app = App(
-                    id: id,
+                    bid: id,
                     name: localizedName,
                     type: appType,
                     teamID: teamID,
@@ -209,7 +209,14 @@ extension AppListModel {
         guard let filzaURL else {
             return
         }
-        let fileURL = filzaURL.appendingPathComponent(url.path)
+
+        let fileURL: URL
+        if #available(iOS 16, *) {
+            fileURL = filzaURL.appending(path: url.path)
+        } else {
+            fileURL = URL(string: filzaURL.absoluteString + (url.path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? ""))!
+        }
+
         UIApplication.shared.open(fileURL)
     }
 

@@ -122,6 +122,10 @@ fileprivate extension InjectorV3 {
                 DDLogInfo("Extracting \(header.name)", ddlog: logger)
                 contentData = try LZ4.decompress(data: Data(data))
                 break
+            } else if header.name == "data.tar.zst" {
+                DDLogInfo("Extracting \(header.name)", ddlog: logger)
+                contentData = try ZStd.unarchive(archive: Data(data))
+                break
             } else {
                 continue
             }
@@ -216,5 +220,18 @@ fileprivate extension InjectorV3 {
 
             DDLogInfo("Successfully copied bundle \(bundleName)", ddlog: logger)
         }
+    }
+}
+
+fileprivate enum ZStd {
+    static func unarchive(archive: Data) throws -> Data {
+        try decompress(data: archive)
+    }
+
+    static func decompress(data: Data) throws -> Data {
+        guard let output = TFZStdDecompressData(data) else {
+            throw SWCompression.DataError.corrupted
+        }
+        return output
     }
 }

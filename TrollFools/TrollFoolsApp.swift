@@ -11,7 +11,7 @@ import CocoaLumberjackSwift
 @main
 struct TrollFoolsApp: SwiftUI.App {
 
-    @AppStorage("isDisclaimerHidden")
+    @AppStorage("isDisclaimerHiddenV2")
     var isDisclaimerHidden: Bool = false
 
     init() {
@@ -47,7 +47,7 @@ struct TrollFoolsApp: SwiftUI.App {
             }
 
             let logsDirectory = cachesDirectory
-                .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
+                .appendingPathComponent(Constants.gAppIdentifier, isDirectory: true)
                 .appendingPathComponent("SharedLogs", isDirectory: true)
 
             try? FileManager.default.createDirectory(at: logsDirectory, withIntermediateDirectories: true)

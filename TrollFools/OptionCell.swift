@@ -9,28 +9,33 @@ import SwiftUI
 
 struct OptionCell: View {
     let option: Option
+    let detachCount: Int
 
     var iconName: String {
         if #available(iOS 16, *) {
-            option == .attach ? "syringe" : "xmark.bin"
+            option == .attach ? "syringe" : "folder.badge.gear"
         } else {
-            option == .attach ? "tray.and.arrow.down" : "xmark.bin"
+            option == .attach ? "tray.and.arrow.down" : "folder.badge.gear"
         }
     }
 
+    var tintColor: Color {
+        option == .attach ? Color(.systemGreen) : .accentColor
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 0) {
             ZStack {
                 Image(systemName: iconName)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 32, height: 32)
-                .foregroundColor(option == .attach
-                                 ? .accentColor : .red)
-                .padding(.all, 40)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 32, height: 32)
+                    .foregroundColor(tintColor)
+                    .padding(.all, 40)
+                    .accessibilityHidden(true)
             }
             .background(
-                (option == .attach ? Color.accentColor : Color.red)
+                tintColor
                     .opacity(0.1)
                     .clipShape(RoundedRectangle(
                         cornerRadius: 10,
@@ -38,12 +43,29 @@ struct OptionCell: View {
                     ))
             )
 
-            Text(option == .attach
-                 ? NSLocalizedString("Inject", comment: "")
-                 : NSLocalizedString("Eject", comment: ""))
-                .font(.headline)
-                .foregroundColor(option == .attach
-                                 ? .accentColor : .red)
+            HStack {
+                Text(option == .attach
+                    ? NSLocalizedString("Inject", comment: "")
+                    : NSLocalizedString("Manage", comment: ""))
+                    .font(.headline)
+                    .foregroundColor(tintColor)
+                    .padding(.vertical, 12)
+                    .accessibilityHidden(true)
+
+                if option == .detach, detachCount > 0 {
+                    ZStack {
+                        Text("\(min(detachCount, 99))")
+                            .font(.footnote)
+                            .foregroundColor(tintColor)
+                            .padding(6)
+                            .accessibilityHidden(true)
+                    }
+                    .background(
+                        Circle()
+                            .fill(tintColor.opacity(0.1))
+                    )
+                }
+            }
         }
     }
 }

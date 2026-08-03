@@ -25,8 +25,8 @@ struct AppListCell: View {
 
     @available(iOS 15, *)
     var highlightedId: AttributedString {
-        let id = app.id
-        var attributedString = AttributedString(id)
+        let bid = app.bid
+        var attributedString = AttributedString(bid)
         if let range = attributedString.range(of: appList.filter.searchKeyword, options: [.caseInsensitive, .diacriticInsensitive]) {
             attributedString[range].foregroundColor = .accentColor
         }
@@ -58,22 +58,25 @@ struct AppListCell: View {
                             .lineLimit(1)
                     }
 
-                    if app.isInjected {
-                        Image(systemName: "bandage")
+                    if app.isInjected || app.hasPersistedAssets {
+                        Image(systemName: app.isInjected ? "bandage" : "exclamationmark.triangle")
                             .font(.subheadline)
                             .foregroundColor(.orange)
-                            .accessibilityLabel(NSLocalizedString("Patched", comment: ""))
+                            .accessibilityLabel(app.isInjected ? NSLocalizedString("Patched", comment: "") : NSLocalizedString("Includes Disabled PlugIns", comment: ""))
                             .transition(.opacity)
                     }
                 }
-                .animation(.easeOut, value: app.isInjected)
+                .animation(.easeOut, value: combines(
+                    app.isInjected,
+                    app.hasPersistedAssets
+                ))
 
                 if #available(iOS 15, *) {
                     Text(highlightedId)
                         .font(.subheadline)
                         .lineLimit(app.isAdvertisement ? 2 : 1)
                 } else {
-                    Text(app.id)
+                    Text(app.bid)
                         .font(.subheadline)
                         .lineLimit(app.isAdvertisement ? 2 : 1)
                 }
@@ -102,7 +105,9 @@ struct AppListCell: View {
                 }
             } else if app.isAdvertisement {
                 Image("badge-ad")
+                    .foregroundColor(.secondary)
                     .scaleEffect(1.2)
+                    .accessibilityLabel(NSLocalizedString("This is an advertisement.", comment: ""))
             }
         }
         .contextMenu {
@@ -189,7 +194,7 @@ struct AppListCell: View {
     }
 
     private func launch() {
-        LSApplicationWorkspace.default().openApplication(withBundleID: app.id)
+        LSApplicationWorkspace.default().openApplication(withBundleID: app.bid)
     }
 
     var isFilzaInstalled: Bool { appList.isFilzaInstalled }

@@ -1,5 +1,5 @@
 Package: wiki.qaq.trollfools
-Name: DjInjection
+Name: TrollFools
 Version: 4.3-253
 Section: Applications
 Depends: firmware (>= 14.0)

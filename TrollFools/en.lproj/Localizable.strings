@@ -17,6 +17,9 @@
 "Advertisement" = "Advertisement";
 
 /* No comment provided by engineer. */
+"After the app upgrade, any injected plugins will be disabled. You will need to manually re-enable them." = "After the app upgrade, any injected plugins will be disabled. You will need to manually re-enable them.";
+
+/* No comment provided by engineer. */
 "All" = "All";
 
 /* No comment provided by engineer. */
@@ -26,7 +29,13 @@
 "And %d more unsupported user applications." = "And %d more unsupported user applications.";
 
 /* No comment provided by engineer. */
+"Are you sure you want to eject all plug-ins? This action cannot be undone." = "Are you sure you want to eject all plug-ins? This action cannot be undone.";
+
+/* No comment provided by engineer. */
 "Bringing back the most advanced system and security analysis tool." = "Bringing back the most advanced system and security analysis tool.";
+
+/* No comment provided by engineer. */
+"Buy our paid products to support us if you like TrollFools!" = "Buy our paid products to support us if you like TrollFools!";
 
 /* StripedTextTableViewController */
 "Cancel" = "Cancel";
@@ -36,6 +45,9 @@
 
 /* No comment provided by engineer. */
 "Completed" = "Completed";
+
+/* No comment provided by engineer. */
+"Completed with compatibility mode. The plug-in may start working after opening some app features." = "Completed with compatibility mode. The plug-in may start working after opening some app features.";
 
 /* StripedTextTableViewController */
 "Confirm" = "Confirm";
@@ -52,6 +64,9 @@
 /* No comment provided by engineer. */
 "Copyright" = "Copyright";
 
+/* No comment provided by engineer. */
+"Disable All" = "Disable All";
+
 /* StripedTextTableViewController */
 "Do you want to clear this log file “%@”?" = "Do you want to clear this log file “%@”?";
 
@@ -59,10 +74,16 @@
 "Done" = "Done";
 
 /* No comment provided by engineer. */
+"Enable Compatibility Fallback" = "Enable Compatibility Fallback";
+
+/* No comment provided by engineer. */
 "Eject" = "Eject";
 
 /* No comment provided by engineer. */
 "Eject All" = "Eject All";
+
+/* No comment provided by engineer. */
+"Enable All" = "Enable All";
 
 /* No comment provided by engineer. */
 "Error" = "Error";
@@ -92,13 +113,28 @@
 "Fast" = "Fast";
 
 /* No comment provided by engineer. */
+"Fast, feature-rich VNC server for iOS: remote control made simple." = "Fast, feature-rich VNC server for iOS: remote control made simple.";
+
+/* No comment provided by engineer. */
+"If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended." = "If needed, TrollFools will use a compatibility mode to improve success rate. Keeping this on is recommended.";
+
+/* No comment provided by engineer. */
 "Filza (URL Scheme) Not Installed" = "Filza (URL Scheme) Not Installed";
+
+/* No comment provided by engineer. */
+"Full-Fledged Automation Framework for TrollStore." = "Full-Fledged Automation Framework for TrollStore.";
 
 /* No comment provided by engineer. */
 "Hide" = "Hide";
 
 /* No comment provided by engineer. */
 "If you do not know what these options mean, please do not change them." = "If you do not know what these options mean, please do not change them.";
+
+/* No comment provided by engineer. */
+"Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option." = "Choose how TrollFools tries possible targets. If the plug-in does not work as expected, try another option.";
+
+/* No comment provided by engineer. */
+"Includes Disabled PlugIns" = "Includes Disabled PlugIns";
 
 /* No comment provided by engineer. */
 "Inject" = "Inject";
@@ -122,6 +158,9 @@
 "Launch" = "Launch";
 
 /* No comment provided by engineer. */
+"Lessica, huami1314, iosdump and other contributors" = "Lessica, huami1314, iosdump and other contributors";
+
+/* No comment provided by engineer. */
 "Lexicographic" = "Lexicographic";
 
 /* No comment provided by engineer. */
@@ -131,7 +170,13 @@
 "Log Viewer" = "Log Viewer";
 
 /* No comment provided by engineer. */
-"Made with ♥ by OwnGoal Studio" = "Made with ♥ by OwnGoal Studio";
+"Manage" = "Manage";
+
+/* No comment provided by engineer. */
+"Manage %d Plug-Ins" = "Manage %d Plug-Ins";
+
+/* No comment provided by engineer. */
+"New version %@ available!" = "New version %@ available!";
 
 /* No comment provided by engineer. */
 "No Applications" = "No Applications";
@@ -176,6 +221,9 @@
 "Prefer Main Executable" = "Prefer Main Executable";
 
 /* No comment provided by engineer. */
+"Try the app’s main file first. Turn this on when the plug-in does not seem active." = "Try the app’s main file first. Turn this on when the plug-in does not seem active.";
+
+/* No comment provided by engineer. */
 "Rebuild Icon Cache" = "Rebuild Icon Cache";
 
 /* No comment provided by engineer. */
@@ -215,6 +263,9 @@
 "The content of text file “%@” is empty." = "The content of text file “%@” is empty.";
 
 /* No comment provided by engineer. */
+"This is an advertisement." = "This is an advertisement.";
+
+/* No comment provided by engineer. */
 "TrollFools" = "DjInjection";
 
 /* No comment provided by engineer. */
@@ -227,6 +278,9 @@
 "TrollStore Applications" = "TrollStore Applications";
 
 /* No comment provided by engineer. */
+"TrollVNC" = "TrollVNC";
+
+/* No comment provided by engineer. */
 "Unable to locate the data archive in the Debian package." = "Unable to locate the data archive in the Debian package.";
 
 /* No comment provided by engineer. */
@@ -236,6 +290,9 @@
 "Use Weak Reference" = "Use Weak Reference";
 
 /* No comment provided by engineer. */
+"Controls whether the app crashes when the plug-in cannot be found. Keeping this on can reduce unexpected crashes in some scenarios, but the plug-in will not work in those cases." = "Controls whether the app crashes when the plug-in cannot be found. Keeping this on can reduce unexpected crashes in some scenarios, but the plug-in will not work in those cases.";
+
+/* No comment provided by engineer. */
 "User" = "User";
 
 /* No comment provided by engineer. */
@@ -243,6 +300,9 @@
 
 /* No comment provided by engineer. */
 "View Logs" = "View Logs";
+
+/* No comment provided by engineer. */
+"XXTouch Elite TS" = "XXTouch Elite TS";
 
 /* No comment provided by engineer. */
 "You need to rebuild the icon cache in TrollStore to apply changes." = "You need to rebuild the icon cache in TrollStore to apply changes.";

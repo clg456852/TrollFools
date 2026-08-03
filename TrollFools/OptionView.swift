@@ -16,6 +16,8 @@ struct OptionView: View {
     private let preDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/pre/testa.dylib"
     private let releaseDownloadURL = "https://dj-injection.oss-cn-hangzhou.aliyuncs.com/release/testa.dylib"
 
+    @Environment(\.verticalSizeClass) var verticalSizeClass
+
     @State var isImporterPresented = false
     @State var isImporterSelected = false
 
@@ -23,8 +25,9 @@ struct OptionView: View {
     @State var temporaryResult: Result<[URL], any Error>?
 
     @State var isSettingsPresented = false
-
     @State var importerResult: Result<[URL], any Error>?
+
+    @State var numberOfPlugIns: Int = 0
 
     @AppStorage("isWarningHidden")
     var isWarningHidden: Bool = false
@@ -38,7 +41,7 @@ struct OptionView: View {
     
     var body: some View {
         if #available(iOS 15, *) {
-            content
+            wrappedContent
                 .alert(
                     "提示",
                     isPresented: $isWarningPresented,
@@ -64,7 +67,7 @@ struct OptionView: View {
                         Text("取消")
                     }
                 } message: {
-                    if case .success(let urls) = $0 {
+                    if case let .success(urls) = $0 {
                         Text(Self.warningMessage(urls))
                     }
                 }
@@ -80,8 +83,12 @@ struct OptionView: View {
                     Text("无文件")
                 }
         } else {
-            content
+            wrappedContent
         }
+    }
+
+    var wrappedContent: some View {
+        content.toolbar { toolbarContent }
     }
 
     var content: some View {
@@ -103,7 +110,7 @@ struct OptionView: View {
                         }
                     }
                 } label: {
-                    OptionCell(option: .attach)
+                    OptionCell(option: .attach, detachCount: 0)
                 }
                 .accessibilityLabel(NSLocalizedString("Inject", comment: ""))
 
@@ -112,9 +119,13 @@ struct OptionView: View {
                 NavigationLink {
                     EjectListView(app)
                 } label: {
-                    OptionCell(option: .detach)
+                    OptionCell(option: .detach, detachCount: numberOfPlugIns)
                 }
-                .accessibilityLabel(NSLocalizedString("Eject", comment: ""))
+                .accessibilityLabel(
+                    numberOfPlugIns == 0
+                        ? NSLocalizedString("Manage", comment: "")
+                        : String(format: NSLocalizedString("Manage %d Plug-Ins", comment: ""), numberOfPlugIns)
+                )
 
                 Spacer()
             }
@@ -231,6 +242,7 @@ struct OptionView: View {
         .navigationTitle(app.name)
         .onAppear {
             checkFileStatus()
+            recalculatePlugInCount()
         }
         .onDisappear {
             // 清理任务，避免内存泄漏
@@ -247,10 +259,10 @@ struct OptionView: View {
             NavigationLink(isActive: $isImporterSelected) {
                 if let result = importerResult {
                     switch result {
-                    case .success(let urls):
+                    case let .success(urls):
                         InjectView(app, urlList: urls
                             .sorted(by: { $0.lastPathComponent < $1.lastPathComponent }))
-                    case .failure(let error):
+                    case let .failure(error):
                         FailureView(
                             title: NSLocalizedString("Error", comment: ""),
                             error: error
@@ -294,6 +306,20 @@ struct OptionView: View {
                     }
                     .padding()
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color.black.opacity(0.8)))
+                }
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    var toolbarContent: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            if verticalSizeClass == .compact {
+                Button {
+                    isSettingsPresented = true
+                } label: {
+                    Label(NSLocalizedString("Advanced Settings", comment: ""),
+                          systemImage: "gear")
                 }
             }
         }
@@ -532,7 +558,7 @@ struct OptionView: View {
 
         // 查找 InjectorV3/Logs 目录下的日志（注入过程的日志）
         let rootDirectory = cachesDirectory
-            .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
+            .appendingPathComponent(Constants.gAppIdentifier, isDirectory: true)
             .appendingPathComponent("InjectorV3", isDirectory: true)
 
         if fileManager.fileExists(atPath: rootDirectory.path),
@@ -585,7 +611,7 @@ struct OptionView: View {
 
         // 查找 SharedLogs 目录下的日志（应用本身的日志，包括 OptionView 的日志）
         let sharedLogsDirectory = cachesDirectory
-            .appendingPathComponent(gTrollFoolsIdentifier, isDirectory: true)
+            .appendingPathComponent(Constants.gAppIdentifier, isDirectory: true)
             .appendingPathComponent("SharedLogs", isDirectory: true)
 
         if fileManager.fileExists(atPath: sharedLogsDirectory.path),
@@ -618,6 +644,15 @@ struct OptionView: View {
         }
 
         return latestURL
+    }
+
+    private func recalculatePlugInCount() {
+        var urls = [URL]()
+        urls += InjectorV3.main.injectedAssetURLsInBundle(app.url)
+        let enabledNames = urls.map { $0.lastPathComponent }
+        urls += InjectorV3.main.persistedAssetURLs(bid: app.bid)
+            .filter { !enabledNames.contains($0.lastPathComponent) }
+        numberOfPlugIns = urls.count
     }
 }
 

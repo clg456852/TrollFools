@@ -7,15 +7,16 @@
 
 import Foundation
 
-struct InjectedPlugIn: Identifiable, Hashable {
+struct InjectedPlugIn: Equatable, Identifiable, Hashable {
     let id: String
     let url: URL
     let createdAt: Date
+    let isEnabled: Bool
 
-    init(url: URL) {
+    init(url: URL, isEnabled: Bool) {
         self.id = url.absoluteString
         self.url = url
-        let attributes = try? FileManager.default.attributesOfItem(atPath: url.path)
-        self.createdAt = attributes?[.creationDate] as? Date ?? Date()
+        self.createdAt = (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
+        self.isEnabled = isEnabled
     }
 }

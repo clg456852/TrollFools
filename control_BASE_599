@@ -1,6 +1,6 @@
 Package: wiki.qaq.trollfools
-Name: DjInjection
-Version: 4.3-253
+Name: TrollFools
+Version: 3.7-42
 Section: Applications
 Depends: firmware (>= 14.0)
 Architecture: iphoneos-arm
