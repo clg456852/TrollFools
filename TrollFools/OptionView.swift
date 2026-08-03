@@ -552,6 +552,11 @@ struct OptionView: View {
         guard let cachesDirectory = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first else {
             return nil
         }
+        let resourceKeys: Set<URLResourceKey> = [
+            .isRegularFileKey,
+            .creationDateKey,
+            .contentModificationDateKey,
+        ]
 
         var latestURL: URL?
         var latestDate: Date?
@@ -575,18 +580,18 @@ struct OptionView: View {
 
                 let logsDirectory = tempDirectory
                     .appendingPathComponent("Logs", isDirectory: true)
-                    .appendingPathComponent(app.id, isDirectory: true)
+                    .appendingPathComponent(app.bid, isDirectory: true)
 
                 guard let enumerator = fileManager.enumerator(
                     at: logsDirectory,
-                    includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey],
+                    includingPropertiesForKeys: Array(resourceKeys),
                     options: [.skipsHiddenFiles]
                 ) else {
                     continue
                 }
 
                 for case let fileURL as URL in enumerator {
-                    guard let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey]),
+                    guard let resourceValues = try? fileURL.resourceValues(forKeys: resourceKeys),
                           resourceValues.isRegularFile == true else {
                         continue
                     }
@@ -617,11 +622,11 @@ struct OptionView: View {
         if fileManager.fileExists(atPath: sharedLogsDirectory.path),
            let enumerator = fileManager.enumerator(
                at: sharedLogsDirectory,
-               includingPropertiesForKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey],
+               includingPropertiesForKeys: Array(resourceKeys),
                options: [.skipsHiddenFiles]
            ) {
             for case let fileURL as URL in enumerator {
-                guard let resourceValues = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .creationDateKey, .contentModificationDateKey]),
+                guard let resourceValues = try? fileURL.resourceValues(forKeys: resourceKeys),
                       resourceValues.isRegularFile == true else {
                     continue
                 }
