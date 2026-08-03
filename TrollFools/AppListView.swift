@@ -440,17 +440,8 @@ struct AppListView: View {
     }
 
     var footerContent: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(appString)
-                .font(.footnote)
-
-            Button {
-                UIApplication.shared.open(URL(string: "https://github.com/Lessica/TrollFools")!)
-            } label: {
-                Text(NSLocalizedString("Source Code", comment: ""))
-                    .font(.footnote)
-            }
-        }
+        Text(appString.components(separatedBy: "\n").first ?? appString)
+            .font(.footnote)
     }
 
     private func preprocessURL(_ url: URL) -> URL {
